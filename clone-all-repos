@@ -17,17 +17,8 @@ ScriptVersion=0.1
 Red='\033[1;31m'
 Green='\033[1;32m'
 Defcol='\033[0m'
-
-# COMMANDS USED IN THIS SCRIPT
-ExternCommands='test read grep sed curl git'
-
-#=========================== MAIN SCRIPT COMMANDS ===========================#
-
-function show_help() {
-cat <<-HELP
-
-Usage:
-  $ScriptName [OPTIONS] USERNAME [DIR]
+Help="
+Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
 Clone all repositories owned by a specific user.
 
@@ -40,11 +31,16 @@ Options:
     -h, --help      Print this help
         --version   Print script version
 
-HELP
-}
+"
 
-function print_version() {
-    echo "$ScriptName v$ScriptVersion"
+# COMMANDS USED IN THIS SCRIPT
+ExternCommands='test read grep sed curl git'
+
+#=========================== MAIN SCRIPT COMMANDS ===========================#
+
+function show_help() { echo "$Help"; }
+
+function print_version() { echo "$ScriptName v$ScriptVersion"
 }
 
 function fatal_error() {
