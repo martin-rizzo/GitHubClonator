@@ -38,32 +38,30 @@ ExternCommands='test read grep sed curl git'
 
 #=========================== MAIN SCRIPT COMMANDS ===========================#
 
-function show_help() { echo "$Help"; }
+show_help() { echo "$Help"; }
 
-function print_version() { echo "$ScriptName v$ScriptVersion"
+print_version() { echo "$ScriptName v$ScriptVersion"; }
+
+fatal_error() {
+    echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr ; exit ${2:1}
 }
 
-function fatal_error() {
-    echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr
-    exit ${2:1}
-}
-
-function clone_all_repos() {
+clone_all_repos() {
     [ -z "$UserName" ] && show_help && exit 0
     for_each_repo_owned_by "$UserName" clone_repo
 }
 
-function ssh_clone_all_repos() {
+ssh_clone_all_repos() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" ssh_clone_repo
 }
 
-function enumerate_all_repos() {
+enumerate_all_repos() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" enumerate_repo
 }
 
-function debug_all_repos() {
+debug_all_repos() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" debug_repo
 }
@@ -80,21 +78,21 @@ function debug_all_repos() {
 ## @param clone_url     The web URL to clone the repo
 ## @param ssh_url       The code to clone the repo using SSH
 ##
-function clone_repo() {
+clone_repo() {
     local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
     $DryRun git clone "$git_pull_url" "$directory"
 }
-function ssh_clone_repo() {
+ssh_clone_repo() {
     local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
     local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
     $DryRun git clone "$ssh_url" "$directory"
 }
-function enumerate_repo() {
+enumerate_repo() {
     local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
     [ -z "$description" -o  "$desciption" = '""' ] && description=$html_url
     printf "%3d: " $index; echo "$description"
 }
-function debug_repo() {
+debug_repo() {
     local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
     echo "$description"
     echo "    WEBPAGE   $html_url"
@@ -109,7 +107,7 @@ function debug_repo() {
 ## @param username      The username of the repo owner
 ## @param repofunction  The function to execute on each repo
 ##
-function for_each_repo_owned_by() {
+for_each_repo_owned_by() {
     local username=$1 repofunction=$2
     local url="https://api.github.com/users/$username/repos"
     local properties
@@ -138,7 +136,7 @@ function for_each_repo_owned_by() {
 ##     A long list of arguments in the form of name/value pair;
 ##     each pair represent a property in the JSON returned by github.
 ##
-function proc_repo_properties() {
+proc_repo_properties() {
     local repofunction=$1
     local index=0
     local dirfilter allowedchars
@@ -193,7 +191,7 @@ function proc_repo_properties() {
     done
 }
 
-function generate_dir() {
+generate_dir() {
     local dirfilter=$1 description=$2 html_url=$3
 
     local directory=$(sed "$dirfilter" <<<"$description")
