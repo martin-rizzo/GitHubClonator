@@ -34,7 +34,7 @@ Options:
 "
 
 # COMMANDS USED IN THIS SCRIPT
-ExternCommands='test read grep sed curl git'
+ExternCommands='test read awk sed git'
 
 #=========================== MAIN SCRIPT COMMANDS ===========================#
 
@@ -111,6 +111,8 @@ for_each_repo_owned_by() {
     local username=$1 repofunction=$2
     local url="https://api.github.com/users/$username/repos"
     local properties
+    local wget=$(hash wget &>/dev/null && echo wget || echo curl)
+    ! hash $wget &>/dev/null && fatal_error "curl or wget must be installed in the system"
 
     IFS=$'\n' read -r -d '' -a properties < <( cat repos.txt \
         | awk '/\{/{++cnt}; /\}/{--cnt}; cnt==1 && (/html_url/||/description/||/clone_url/||/ssh_url/){print($0)}' \
