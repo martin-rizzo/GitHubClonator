@@ -52,17 +52,17 @@ clone_all_repos() {
 }
 
 ssh_clone_all_repos() {
-    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" ssh_clone_repo
 }
 
 enumerate_all_repos() {
-    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" enumerate_repo
 }
 
 debug_all_repos() {
-    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
     for_each_repo_owned_by "$UserName" debug_repo
 }
 
@@ -223,12 +223,12 @@ while test $# -gt 0; do
           Command='print_version'
           ;;
         -*)
-          Command='fatal_error';Error="Unknown option '$1'"
+          Command='fatal_error';Error="unknown option '$1'"
           ;;
         *)
           if   [ -z "$UserName" ]; then UserName=$1
           elif [ -z "$UserDir"  ]; then UserDir=$1
-          else Command='fatal_error';Error="Unsupported extra argument '$1'"
+          else Command='fatal_error';Error="unsupported extra argument '$1'"
           fi
           ;;
     esac
@@ -240,7 +240,7 @@ OutputDir=${UserDir:-$OutputDir}
 OutputDir=${OutputDir%/}
 
 # verify output directory exist
-[ ! -d "$OutputDir" ] && fatal_error "Directory '$OutputDir' does not exist"
+[ ! -d "$OutputDir" ] && fatal_error "directory '$OutputDir' does not exist"
 
 # execute script command
 "$Command"
