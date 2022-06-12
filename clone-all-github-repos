@@ -1,22 +1,19 @@
 #!/bin/bash
-#  Bash script to clone all repositories owned by a user
+#  Bash script to clone all github repositories owned by a user
 #  https://github.com/martin-rizzo/CloneAllRepos
 #  by Martin Rizzo
 
 # CONSTANTS (can be modified by the arguments passed to the script)
-AllowSpacesInDir=false   # true = allow spaces in directory names
-AllowDotsInDir=false     # true = allow dots in directory names
-MaxDirLength=64          # maximum directory length (0 = no limit)
-OutputDir='.'
-DryRun=
-UserName=
-UserDir=
-Command='clone_all_repos'
-ScriptName=${0##*/}
-ScriptVersion=0.1
-Red='\033[1;31m'
-Green='\033[1;32m'
-Defcol='\033[0m'
+MaxDirLength=64           # maximum directory length (0 = no limit)
+OutputDir=                # base directory where the repos will be stored
+DryRun=                   # set this var to 'echo' to do a dry-run
+UserName=                 # name used for the github user account
+Command='clone_all_repos' # main command to execute
+ScriptName=${0##*/}       # name of this script
+ScriptVersion=0.1         # version of this script
+Red='\033[1;31m'          # ANSI red color
+Green='\033[1;32m'        # ANSI green color
+Defcol='\033[0m'          # ANSI default color
 Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
@@ -36,7 +33,7 @@ Options:
 # COMMANDS USED IN THIS SCRIPT
 ExternCommands='test read awk sed git'
 
-#=========================== MAIN SCRIPT COMMANDS ===========================#
+#============================== MAIN COMMANDS ==============================#
 
 show_help() { echo "$Help"; }
 
@@ -72,33 +69,37 @@ debug_all_repos() {
 ## Functions to be used with 'for_each_repo_owned_by'
 ##
 ## @param index         Position of the repo within the list
-## @param html_url      The URL of the repository's page on GitHub
+## @param name          ???
 ## @param description   A text describing the repo
 ## @param directory     The local directory where the repo will be cloned
+## @param html_url      The URL of the repository's page on GitHub
 ## @param clone_url     The web URL to clone the repo
 ## @param ssh_url       The code to clone the repo using SSH
 ##
+
 clone_repo() {
-    local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
+    fatal_error "clone repository isn't supported yet"
+    local index=$1 name=$2 description=$3 directory=$4 html_url=$5 clone_url=$6 ssh_url=$7
     $DryRun git clone "$git_pull_url" "$directory"
 }
 ssh_clone_repo() {
-    local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
+    fatal_error "clone repository with ssh isn't supported yet"
+    local index=$1 name=$2 description=$3 directory=$4 html_url=$5 clone_url=$6 ssh_url=$7
     local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
     $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_repo() {
-    local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
-    [ -z "$description" -o  "$desciption" = '""' ] && description=$html_url
-    printf "%3d: " $index; echo "$description"
+    local index=$1 name=$2 description=$3 directory=$4 html_url=$5 clone_url=$6 ssh_url=$7
+    printf "%3d: %-16s %s\n" $index "$name" "$description"
 }
 debug_repo() {
-    local index=$1 html_url=$2 description=$3 directory=$4 clone_url=$5 ssh_url=$6
-    echo "$description"
-    echo "    WEBPAGE   $html_url"
-    echo "    GIT URL   $clone_url"
-    echo "    SSH URL   $ssh_url"
-    echo "    DIRECTORY $directory"
+    local index=$1 name=$2 description=$3 directory=$4 html_url=$5 clone_url=$6 ssh_url=$7
+    echo "$index:$name"
+    echo "    directory: $directory"
+    echo "    descript : $description"
+    echo "    webpage  : $html_url"
+    echo "    git url  : $clone_url"
+    echo "    ssh url  : $ssh_url"
     echo
 }
 
@@ -111,35 +112,51 @@ for_each_repo_owned_by() {
     local username=$1 repofunction=$2
     local url="https://api.github.com/users/$username/repos"
     local properties
-    local wget=$(hash wget &>/dev/null && echo wget || echo curl)
-    ! hash $wget &>/dev/null && fatal_error "curl or wget must be installed in the system"
+    
+    # api documentation:
+    # [ https://docs.github.com/en/rest/repos/repos#list-repositories-for-a-user ]
 
-    # hyper quick and dirty code to parse JSON!!
-    IFS=$'\n' read -r -d '' -a properties < <( cat repos.txt \
-        | awk '/\{/{++i}; /\}/{--i}; /\"topics\"/{t=1} /]/{t=0}
-               i==0 { print "}" }
-               i==1 && (/html_url/||/description/||/clone_url/||/ssh_url/) { sub(/\":/,"\"\n"); print }
-               t==1 && /\"dir-/ { gsub(/^.*\"dir-/, "\"dir-"); print "\"topic\"\n" $0 }' \
+    # super quick and dirty code to parse json with awk
+    # kids, don't do it at home!!!
+    IFS=$'\n' read -r -d '' -a properties < <( print_url_content "$url" \
+        | awk '/\{/{++s} /\"topics\"/{t=1} 
+               s==1 && (/\"name\"/||/html_url/||/description/||/clone_url/||/ssh_url/) {
+                 sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
+               }
+               t==1 && /\"dir-/ {
+                 match($0,/\"dir-[^\"]*\"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
+               }
+               /\}/{--s} /]/{t=0} s==0 { print "}" }
+        ' \
         && printf '\0' )
-        #| sed 's/:/\n/;s/,$//;s/^[[:space:]]*//;s/[[space:]]*$//' \
-        
-    for prop in "${properties[@]}"; do
-        sed 's/^[ \t]*//;s/[ \t,]*$//' <<<"$prop"
-       #echo "$prop"
-    done
-    exit 0
     proc_repo_properties "$repofunction" "${properties[@]}"
 }
 
 #=================================== MISC ===================================#
+
+print_url_content() {
+    if hash wget &>/dev/null;   then wget --quiet -O- "$1"
+    elif hash curl &>/dev/null; then curl --silent --fail --location "$1"
+    else
+        fatal_error "curl or wget must be installed in the system"
+    fi
+}
+
+generate_dir_path() {
+    local name=$1 topic=$2
+    local subdir
+
+    [ ! -z "$topic" ] && subdir="$topic/"    
+    echo "${OutputDir}/${subdir}${name}"
+}
 
 ## Execute a function on every repo reported by the provided properties
 ##
 ## Properties definition starts at the second argument. The second
 ## argument is a property name; the third is its value; the fourth
 ## is the next property name; the fifth is its value; and so on in
-## that orden. Only 4 properties are taken into account: "html_url",
-## "description", "clone_url" & "ssh_url".
+## that orden. Only 6 properties are taken into account: "name",
+## "description", "html_url", "clone_url", "ssh_url" & "topic".
 ##
 ## @param repofunction
 ##     The function to execute for each repo
@@ -150,96 +167,60 @@ for_each_repo_owned_by() {
 ##
 proc_repo_properties() {
     local repofunction=$1
-    local index=0
-    local dirfilter allowedchars
-    local html_url description clone_url ssh_url
-
-    #-- generate directory filter --------
-    allowedchars='A-Za-z0-9'
-    if $AllowSpacesInDir ; then
-       allowedchars="${allowedchars} "
-    fi
-    if $AllowDotsInDir ; then
-        allowedchars="${allowedchars}\."
-    fi
-    dirfilter='s/^"//;s/"$//;'"s/[^${allowedchars}]/_/g"
-    if [ "$MaxDirLength" -gt 0 ]; then
-        dirfilter="$dirfilter;s/^\(.\{$MaxDirLength\}\).*\$/\1/"
-    fi
+    local index=0 topic
+    local name html_url description clone_url ssh_url
+    local remove_quotes='sub(/^\"/,"");sub(/\"$/,"")'
+    local remove_dir_prefix='sub(/^"dir-/,"");sub(/\"$/,"")'
+    local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
     #-- process each property -----------
     shift
     while test $# -gt 0; do
         case "$1" in
-            '"html_url"')
-              shift
-              html_url=$(sed 's/^"//;s/"$//' <<<"$1")
+            '"name"')
+              shift; name=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"description"')
-              shift
-              description=$1
-              directory=$(generate_dir "$dirfilter" "$description" "$html_url")
+              shift; description=$1
+              ;;
+            '"html_url"')
+              shift; html_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"clone_url"')
-              shift
-              clone_url=$(sed 's/^"//;s/"$//' <<<"$1")
+              shift; clone_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"ssh_url"')
-              shift
-              ssh_url=$(sed 's/^"//;s/"$//' <<<"$1")
+              shift; ssh_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
+            '"topic"')
+              shift; topic=$(awk "{$remove_dir_prefix;$capitalize}" <<<"$1")
+              ;;
+            '}')
+            if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
+                directory=$(generate_dir_path "$name" "$topic")
+                ((index++))
+                "$repofunction" $index "$name" "$description" "$directory" "$html_url" "$clone_url" "$ssh_url"
+                name=;description=;directory=;html_url=;clone_url=;ssh_url=;
+            fi
         esac
-        if [ ! -z "$html_url"    -a \
-             ! -z "$description" -a \
-             ! -z "$directory"   -a \
-             ! -z "$clone_url"   -a \
-             ! -z "$ssh_url"   ]
-        then
-            ((index++))
-            "$repofunction" $index "$html_url" "$description" "$directory" "$clone_url" "$ssh_url"
-            html_url=;description=;directory=;clone_url=;ssh_url=;
-        fi
         shift
     done
-}
-
-generate_dir() {
-    local dirfilter=$1 description=$2 html_url=$3
-
-    local directory=$(sed "$dirfilter" <<<"$description")
-    local alphachars=$(sed 's/^A-Za-z0-9//g' <<<"$directory")
-    [ ${#alphachars} -lt 5 ] && directory=$(sed "s/^.*:\/\///;$dirfilter" <<<"$html_url")
-    echo "${OutputDir}/$directory"
 }
 
 #================================== START ===================================#
 
 while test $# -gt 0; do
     case "$1" in
-        -n | --dry-run)
-          DryRun=echo
-          ;;
-        --ssh)
-          Command='ssh_clone_all_repos'
-          ;;
-        -l | --list)
-          Command='enumerate_all_repos'
-          ;;
-        --debug)
-          Command='debug_all_repos'
-          ;;
-        -h | --help)
-          Command='show_help'
-          ;;
-        --version)
-          Command='print_version'
-          ;;
-        -*)
-          Command='fatal_error';Error="unknown option '$1'"
-          ;;
+        -n | --dry-run) DryRun=echo ;;
+        --ssh)          Command=ssh_clone_all_repos ;;
+        -l | --list)    Command=enumerate_all_repos ;;
+        --debug)        Command=debug_all_repos     ;;
+        -h | --help)    Command=show_help           ;;
+        --version)      Command=print_version       ;;
+        -*)             Command='fatal_error';Error="unknown option '$1'" ;;
         *)
-          if   [ -z "$UserName" ]; then UserName=$1
-          elif [ -z "$UserDir"  ]; then UserDir=$1
+          if   [ -z "$UserName"  ]; then UserName=$1
+          elif [ -z "$OutputDir" ]; then OutputDir=$1
           else Command='fatal_error';Error="unsupported extra argument '$1'"
           fi
           ;;
@@ -248,11 +229,7 @@ while test $# -gt 0; do
 done
 
 # update output directory
-OutputDir=${UserDir:-$OutputDir}
-OutputDir=${OutputDir%/}
-
-# verify output directory exist
-[ ! -d "$OutputDir" ] && fatal_error "directory '$OutputDir' does not exist"
+[ -z "$OutputDir" ] && OutputDir="./$UserName/"
 
 # execute script command
 "$Command"
