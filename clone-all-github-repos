@@ -2,23 +2,10 @@
 #  Bash script to clone all github repositories owned by a user
 #  https://github.com/martin-rizzo/CloneAllRepos
 #  by Martin Rizzo
-
-# CONSTANTS (can be modified by the arguments passed to the script)
-MaxDirLength=64           # maximum directory length (0 = no limit)
-BaseDir=                  # base directory where the repos will be stored
-DryRun=                   # set this var to 'echo' to do a dry-run
-UserName=                 # name used for the github user account
-Command='clone_all_repos' # main command to execute
-Group='--by-topic'        # method used to group repositories
-ScriptName=${0##*/}       # name of this script
-ScriptVersion=0.1         # version of this script
-Red='\033[1;31m'          # ANSI red color
-Green='\033[1;32m'        # ANSI green color
-Defcol='\033[0m'          # ANSI default color
 Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
-Clone all repositories owned by a specific user.
+Clone all github repositories owned by a specific user.
 
 Options:
         
@@ -33,8 +20,20 @@ Options:
     
     -h, --help       Print this help
     -v, --version    Print script version
-
 "
+
+# CONSTANTS (can be modified by the arguments passed to the script)
+MaxDirLength=64           # maximum directory length (0 = no limit)
+BaseDir=                  # base directory where the repos will be stored
+DryRun=                   # set this var to 'echo' to do a dry-run
+UserName=                 # name used for the github user account
+Command='clone_all_repos' # main command to execute
+Group='--by-topic'        # method used to group repositories
+ScriptName=${0##*/}       # name of this script
+ScriptVersion=0.1         # version of this script
+Red='\033[1;31m'          # ANSI red color
+Green='\033[1;32m'        # ANSI green color
+Defcol='\033[0m'          # ANSI default color
 
 # COMMANDS USED IN THIS SCRIPT
 ExternCommands='test read awk sed git'
@@ -51,11 +50,13 @@ fatal_error() {
 
 clone_all_repos() {
     [ -z "$UserName" ] && show_help && exit 0
+    [ -e "${BaseDir%/}" ] && fatal_error "directory '${BaseDir%/}' already exists"
     for_each_repo_owned_by "$UserName" clone_repo
 }
 
 ssh_clone_all_repos() {
     [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
+    [ -e "${BaseDir%/}" ] && fatal_error "directory '${BaseDir%/}' already exists"
     for_each_repo_owned_by "$UserName" ssh_clone_repo
 }
 
@@ -237,8 +238,8 @@ while test $# -gt 0; do
     shift
 done
 
-# update output directory
-[ -z "$BaseDir" ] && BaseDir="./$UserName"
+# update base directory
+[ -z "$BaseDir" ] && BaseDir="./$UserName/"
 BaseDir=${BaseDir%/}/
 
 # handle unimplemented options
