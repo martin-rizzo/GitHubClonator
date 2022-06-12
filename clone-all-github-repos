@@ -114,10 +114,20 @@ for_each_repo_owned_by() {
     local wget=$(hash wget &>/dev/null && echo wget || echo curl)
     ! hash $wget &>/dev/null && fatal_error "curl or wget must be installed in the system"
 
+    # hyper quick and dirty code to parse JSON!!
     IFS=$'\n' read -r -d '' -a properties < <( cat repos.txt \
-        | awk '/\{/{++cnt}; /\}/{--cnt}; cnt==1 && (/html_url/||/description/||/clone_url/||/ssh_url/){print($0)}' \
-        | sed 's/:/\n/;s/,$//;s/^[[:space:]]*//;s/[[space:]]*$//' \
+        | awk '/\{/{++i}; /\}/{--i}; /\"topics\"/{t=1} /]/{t=0}
+               i==0 { print "}" }
+               i==1 && (/html_url/||/description/||/clone_url/||/ssh_url/) { sub(/\":/,"\"\n"); print }
+               t==1 && /\"dir-/ { gsub(/^.*\"dir-/, "\"dir-"); print "\"topic\"\n" $0 }' \
         && printf '\0' )
+        #| sed 's/:/\n/;s/,$//;s/^[[:space:]]*//;s/[[space:]]*$//' \
+        
+    for prop in "${properties[@]}"; do
+        sed 's/^[ \t]*//;s/[ \t,]*$//' <<<"$prop"
+       #echo "$prop"
+    done
+    exit 0
     proc_repo_properties "$repofunction" "${properties[@]}"
 }
 
