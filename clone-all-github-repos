@@ -5,10 +5,11 @@
 
 # CONSTANTS (can be modified by the arguments passed to the script)
 MaxDirLength=64           # maximum directory length (0 = no limit)
-OutputDir=                # base directory where the repos will be stored
+BaseDir=                  # base directory where the repos will be stored
 DryRun=                   # set this var to 'echo' to do a dry-run
 UserName=                 # name used for the github user account
 Command='clone_all_repos' # main command to execute
+Group='--by-topic'        # method used to group repositories
 ScriptName=${0##*/}       # name of this script
 ScriptVersion=0.1         # version of this script
 Red='\033[1;31m'          # ANSI red color
@@ -20,13 +21,18 @@ Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 Clone all repositories owned by a specific user.
 
 Options:
-        --ssh       Clone repos using ssh (SSH keys must be configured)
-    -n, --dry-run   Do not actually run any commands; just print them.
-    -l, --list      List the user repositories
-        --debug     Print internal info about each repo
+        
+    -s, --ssh        Clone repos using ssh (SSH keys must be configured)
+    -n, --dry-run    Do not actually run any commands; just print them
+    -l, --list       List the user repositories
+    -d, --debug      Print internal info about each repo
 
-    -h, --help      Print this help
-        --version   Print script version
+    -gt, --by-topic  Group repos in dirs based on its topics (default)
+    -gl, --by-list   Group repos in dirs based on stars list
+    -gn, --no-group  No group repos in directories
+    
+    -h, --help       Print this help
+    -v, --version    Print script version
 
 "
 
@@ -135,19 +141,19 @@ for_each_repo_owned_by() {
 #=================================== MISC ===================================#
 
 print_url_content() {
-    if hash wget &>/dev/null;   then wget --quiet -O- "$1"
+    if   hash wget &>/dev/null; then wget --quiet -O- "$1"
     elif hash curl &>/dev/null; then curl --silent --fail --location "$1"
-    else
-        fatal_error "curl or wget must be installed in the system"
+    else fatal_error "curl or wget must be installed in the system"
     fi
 }
 
 generate_dir_path() {
-    local name=$1 topic=$2
-    local subdir
-
-    [ ! -z "$topic" ] && subdir="$topic/"    
-    echo "${OutputDir}/${subdir}${name}"
+    local name=$1 topic=$2 subdir
+    case $Group in
+        --by-list)  subdir="$list/" ;;
+        --by-topic) [ ! -z "$topic" ] && subdir="$topic/" ;;
+    esac
+    echo "${BaseDir}${subdir}${name}"
 }
 
 ## Execute a function on every repo reported by the provided properties
@@ -200,7 +206,7 @@ proc_repo_properties() {
                 directory=$(generate_dir_path "$name" "$topic")
                 ((index++))
                 "$repofunction" $index "$name" "$description" "$directory" "$html_url" "$clone_url" "$ssh_url"
-                name=;description=;directory=;html_url=;clone_url=;ssh_url=;
+                name=;description=;directory=;html_url=;clone_url=;ssh_url=;topic=
             fi
         esac
         shift
@@ -211,16 +217,19 @@ proc_repo_properties() {
 
 while test $# -gt 0; do
     case "$1" in
-        -n | --dry-run) DryRun=echo ;;
-        --ssh)          Command=ssh_clone_all_repos ;;
-        -l | --list)    Command=enumerate_all_repos ;;
-        --debug)        Command=debug_all_repos     ;;
-        -h | --help)    Command=show_help           ;;
-        --version)      Command=print_version       ;;
-        -*)             Command='fatal_error';Error="unknown option '$1'" ;;
+        -s | --ssh)      Command=ssh_clone_all_repos ;;
+        -n | --dry-run)  DryRun=echo                 ;;
+        -l | --list)     Command=enumerate_all_repos ;;
+        -d | --debug)    Command=debug_all_repos     ;;
+        -gt| --by-topic) Group='--by-topic'          ;;
+        -gl| --by-list)  Group='--by-list'           ;;
+        -gn| --no-group) Group='--no-group'          ;; 
+        -h | --help)     Command=show_help           ;;
+        -v | --version)  Command=print_version       ;;
+        -*)              Command='fatal_error';Error="unknown option '$1'" ;;
         *)
           if   [ -z "$UserName"  ]; then UserName=$1
-          elif [ -z "$OutputDir" ]; then OutputDir=$1
+          elif [ -z "$BaseDir"   ]; then BaseDir=$1
           else Command='fatal_error';Error="unsupported extra argument '$1'"
           fi
           ;;
@@ -229,7 +238,11 @@ while test $# -gt 0; do
 done
 
 # update output directory
-[ -z "$OutputDir" ] && OutputDir="./$UserName/"
+[ -z "$BaseDir" ] && BaseDir="./$UserName"
+BaseDir=${BaseDir%/}/
+
+# handle unimplemented options
+[ "$Group" == '--by-list' ] && fatal_error "group by stars list isn't implemented yet"
 
 # execute script command
 "$Command"
