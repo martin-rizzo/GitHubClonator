@@ -6,6 +6,7 @@ Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
 Clone all github repositories owned by a specific user.
+A personal access token can be used as USERNAME to access private repos.
 
 Options:
         
@@ -117,15 +118,14 @@ debug_repo() {
 ##
 for_each_repo_owned_by() {
     local username=$1 repofunction=$2
-    local url="https://api.github.com/users/$username/repos"
     local properties
     
     # api documentation:
     # [ https://docs.github.com/en/rest/repos/repos#list-repositories-for-a-user ]
-
+    
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
-    IFS=$'\n' read -r -d '' -a properties < <( print_url_content "$url" \
+    IFS=$'\n' read -r -d '' -a properties < <( print_repos_owned_by "$username" \
         | awk '/\{/{++s} /\"topics\"/{t=1} 
                s==1 && (/\"name\"/||/html_url/||/description/||/clone_url/||/ssh_url/) {
                  sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
@@ -141,11 +141,23 @@ for_each_repo_owned_by() {
 
 #=================================== MISC ===================================#
 
-print_url_content() {
-    if   hash wget &>/dev/null; then wget --quiet -O- "$1"
-    elif hash curl &>/dev/null; then curl --silent --fail --location "$1"
+print_repos_owned_by() {
+    local username="$1"
+    local wget
+    if   hash wget &>/dev/null; then wget=( wget --quiet -O- )
+    elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
     else fatal_error "curl or wget must be installed in the system"
     fi
+    if [ ${#username} -ge 36 ] && [ "${username:0:2}" = gh ]; then
+        "${wget[@]}" \
+          --header "Accept: application/vnd.github.v3+json" \
+          --header "Authorization: token $username"         \
+          "https://api.github.com/user/repos"
+    else
+        "${wget[@]}" \
+          --header "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/users/$username/repos"
+    fi    
 }
 
 generate_dir_path() {
@@ -229,8 +241,8 @@ while test $# -gt 0; do
         -v | --version)  Command=print_version       ;;
         -*)              Command='fatal_error';Error="unknown option '$1'" ;;
         *)
-          if   [ -z "$UserName"  ]; then UserName=$1
-          elif [ -z "$BaseDir"   ]; then BaseDir=$1
+          if   [ -z "$UserName"  ]; then UserName="$1"
+          elif [ -z "$BaseDir"   ]; then BaseDir="$1"
           else Command='fatal_error';Error="unsupported extra argument '$1'"
           fi
           ;;
