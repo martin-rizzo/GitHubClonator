@@ -74,7 +74,7 @@ debug_all_repos() {
 #============================== FOR EACH REPO ===============================#
 #    local html_url description clone_url ssh_url
 
-## Functions to be used with 'for_each_repo_owned_by'
+## Group of funtions to be used with 'for_each_repo_owned_by'
 ##
 ## @param index         Position of the repo within the list
 ## @param name          ???
@@ -84,7 +84,6 @@ debug_all_repos() {
 ## @param clone_url     The web URL to clone the repo
 ## @param ssh_url       The code to clone the repo using SSH
 ##
-
 clone_repo() {
     fatal_error "clone repository isn't supported yet"
     local index=$1 name=$2 description=$3 directory=$4 html_url=$5 clone_url=$6 ssh_url=$7
@@ -111,7 +110,7 @@ debug_repo() {
     echo
 }
 
-## Iterate over all user's repos and execute a function on each one
+## Iterates over all user's repos and execute a function on each one
 ##
 ## @param username      The username of the repo owner
 ## @param repofunction  The function to execute on each repo
@@ -125,23 +124,30 @@ for_each_repo_owned_by() {
     
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
-    IFS=$'\n' read -r -d '' -a properties < <( print_repos_owned_by "$username" \
-        | awk '/\{/{++s} /\"topics\"/{t=1} 
-               s==1 && (/\"name\"/||/html_url/||/description/||/clone_url/||/ssh_url/) {
-                 sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
-               }
-               t==1 && /\"dir-/ {
-                 match($0,/\"dir-[^\"]*\"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
-               }
-               /\}/{--s} /]/{t=0} s==0 { print "}" }
-        ' \
-        && printf '\0' )
+    IFS=$'\n' read -r -d '' -a properties < <( print_varvalue_repo_data "$username" && printf '\0' )
     proc_repo_properties "$repofunction" "${properties[@]}"
 }
 
 #=================================== MISC ===================================#
 
-print_repos_owned_by() {
+## Prints data from all repositories in var/value format
+print_varvalue_repo_data() {
+    # super quick and dirty code to parse json with awk
+    # kids, don't do it at home!!!
+    print_json_repo_data "$1" | awk '
+        /\{/{++s} /\"topics\"/{t=1} 
+        s==1 && (/\"name\"/||/html_url/||/description/||/clone_url/||/ssh_url/) {
+            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
+        }
+        t==1 && /\"dir-/ {
+            match($0,/\"dir-[^\"]*\"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
+        }
+        /\}/{--s} /]/{t=0} s==0 { print "}" }
+        '
+}
+
+## Prints data from all repositories in JSON format
+print_json_repo_data() {
     local username="$1"
     local wget
     if   hash wget &>/dev/null; then wget=( wget --quiet -O- )
@@ -160,7 +166,8 @@ print_repos_owned_by() {
     fi    
 }
 
-generate_dir_path() {
+## Prints the path for the local directory where repository will be cloned
+print_local_directory() {
     local name=$1 topic=$2 subdir
     case $Group in
         --by-list)  subdir="$list/" ;;
@@ -169,7 +176,7 @@ generate_dir_path() {
     echo "${BaseDir}${subdir}${name}"
 }
 
-## Execute a function on every repo reported by the provided properties
+## Executes a function on every repo reported by the provided properties
 ##
 ## Properties definition starts at the second argument. The second
 ## argument is a property name; the third is its value; the fourth
@@ -216,7 +223,7 @@ proc_repo_properties() {
               ;;
             '}')
             if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
-                directory=$(generate_dir_path "$name" "$topic")
+                directory=$(print_local_directory "$name" "$topic")
                 ((index++))
                 "$repofunction" $index "$name" "$description" "$directory" "$html_url" "$clone_url" "$ssh_url"
                 name=;description=;directory=;html_url=;clone_url=;ssh_url=;topic=
