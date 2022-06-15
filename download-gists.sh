@@ -31,12 +31,13 @@ Usage:
 Downloads all gists for a specific user.
 
 Options:
+        --ssh       Clone gists using ssh (SSH keys must be configured)
     -n, --dry-run   Do not actually run any commands; just print them.
     -l, --list      List the user gists
     -X              Print detailed info about each gist
 
     -h, --help      Print this help
-    -V, --version   Print script version
+        --version   Print script version
 
 HELP
 }
@@ -62,6 +63,10 @@ function clone_user_gists() {
     for_each_gist_owned_by "$UserName" clone_gist
 }
 
+function ssh_clone_all_gists() {
+    for_each_gist_owned_by "$UserName" ssh_clone_gist
+}
+
 #============================== FOR EACH GIST ===============================#
 
 ## Functions to be used with 'for_each_gist_owned_by'
@@ -75,6 +80,11 @@ function clone_user_gists() {
 function clone_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     $DryRun git clone "$git_pull_url" "$directory"
+}
+function ssh_clone_gist() {
+    local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
+    local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
+    $DryRun git clone "$ssh_url" "$directory"
 }
 function print_gist_name() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
@@ -201,6 +211,9 @@ while test $# -gt 0; do
         -n | --dry-run)
           DryRun=echo
           ;;
+        --ssh)
+          Command='ssh_clone_all_gists'
+          ;;
         -l | --list)
           Command='list_user_gists'
           ;;
@@ -210,7 +223,7 @@ while test $# -gt 0; do
         -h | --help)
           Command='show_help'
           ;;
-        -v | --version)
+        --version)
           Command='print_version'
           ;;
         -*)
