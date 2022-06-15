@@ -1,7 +1,8 @@
 #!/bin/bash
 #  Bash script to clone all github repositories owned by a user
-#  https://github.com/martin-rizzo/CloneAllRepos
+#  https://github.com/martin-rizzo/GitHubClonator
 #  by Martin Rizzo
+ScriptName=${0##*/};ScriptVersion=0.1
 Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
@@ -9,18 +10,21 @@ Clone all github repositories owned by a specific user.
 A personal access token can be used as USERNAME to access private repos.
 
 Options:
-        
-    -s, --ssh        Clone repos using ssh (SSH keys must be configured)
-    -n, --dry-run    Do not actually run any commands; just print them
-    -l, --list       List user repositories
-    -d, --debug      List user repositories with detailed info
+  -s, --ssh        Clone repos using ssh (SSH keys must be configured)
+  -n, --dry-run    Do not actually run any commands; just print them
+  -l, --list       List user repositories
+  -d, --debug      List user repositories with detailed info
 
-    -gt, --by-topic  Group repos in dirs based on its topics (default)
-    -gl, --by-list   Group repos in dirs based on stars list
-    -gn, --no-group  No group repos in directories
+  -gt, --by-topic  Group repos in dirs based on its topics (default)
+  -gl, --by-list   Group repos in dirs based on stars list
+  -gn, --no-group  No group repos in directories
     
-    -h, --help       Print this help
-    -v, --version    Print script version
+  -h, --help       Print this help
+  -v, --version    Print script version
+
+Examples:
+  $ScriptName -l martin-rizzo     List all public repos owned by martin-rizzo
+  $ScriptName --ssh martin-rizzo  Clone all public repos owned by marti-rizzo using ssh
 "
 
 # CONSTANTS (can be modified by the arguments passed to the script)
@@ -31,8 +35,6 @@ UserName=                 # name used for the github user account
 UserToken=
 Command='clone_all_repos' # main command to execute
 Group='--by-topic'        # method used to group repositories
-ScriptName=${0##*/}       # name of this script
-ScriptVersion=0.1         # version of this script
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
 Defcol='\033[0m'          # ANSI default color

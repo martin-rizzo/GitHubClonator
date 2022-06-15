@@ -1,7 +1,26 @@
 #!/bin/bash
 #  Bash script to download all gists owned by a user
-#  https://gist.github.com/martin-rizzo/31d941aede20eefea219a6c52b5cd6b5
+#  https://github.com/martin-rizzo/GitHubClonator
 #  by Martin Rizzo
+ScriptName=${0##*/};ScriptVersion=0.1
+Help="
+Usage: $ScriptName [OPTIONS] USERNAME [DIR]
+
+Downloads all gists for a specific user.
+
+Options:
+      --ssh       Clone gists using ssh (SSH keys must be configured)
+  -n, --dry-run   Do not actually run any commands; just print them.
+  -l, --list      List user gists
+      --debug     List user gists with detailed info
+
+  -h, --help      Print this help
+      --version   Print script version
+        
+Examples:
+  $ScriptName -l martin-rizzo   List all public gists owned by martin-rizzo
+  $ScriptName martin-rizzo      Clone all public gists owned by martin-rizzo
+"
 
 # CONSTANTS (can be modified by the arguments passed to the script)
 AllowSpacesInDir=false   # true = allow spaces in directory names
@@ -12,36 +31,16 @@ DryRun=
 UserName=
 UserDir=
 Command='clone_all_gists'
-ScriptName=${0##*/}
-ScriptVersion=0.1
 Red='\033[1;31m'
 Green='\033[1;32m'
 Defcol='\033[0m'
 
 # COMMANDS USED IN THIS SCRIPT
-ExternCommands='test read grep sed curl git'
+ExternCommands='test read grep awk sed git'
 
 #=========================== MAIN SCRIPT COMMANDS ===========================#
 
-function show_help() {
-cat <<-HELP
-
-Usage:
-  $ScriptName [OPTIONS] USERNAME
-
-Downloads all gists for a specific user.
-
-Options:
-        --ssh       Clone gists using ssh (SSH keys must be configured)
-    -n, --dry-run   Do not actually run any commands; just print them.
-    -l, --list      List the user gists
-        --debug     Print internal info about each gist
-
-    -h, --help      Print this help
-        --version   Print script version
-
-HELP
-}
+function show_help() { echo "$Help"; }
 
 function print_version() {
     echo "$ScriptName v$ScriptVersion"
