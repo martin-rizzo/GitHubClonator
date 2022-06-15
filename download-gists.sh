@@ -13,6 +13,7 @@ Options:
   -n, --dry-run   Do not actually run any commands; just print them.
   -l, --list      List user gists
   -d, --debug     List user gists with detailed info
+  -j, --json      Print the raw JSON containing the gists details
 
   -h, --help      Print this help
   -v, --version   Print script version
@@ -26,10 +27,11 @@ Examples:
 AllowSpacesInDir=false   # true = allow spaces in directory names
 AllowDotsInDir=false     # true = allow dots in directory names
 MaxDirLength=64          # maximum directory length (0 = no limit)
+UserDir=
 OutputDir='.'
 DryRun=
 UserName=
-UserDir=
+UserToken=
 Command='clone_all_gists'
 Red='\033[1;31m'
 Green='\033[1;32m'
@@ -42,7 +44,7 @@ ExternCommands='test read grep awk sed git'
 
 show_help() { echo "$Help"; }
 
-print_version() { echo "$ScriptName v$ScriptVersion" }
+print_version() { echo "$ScriptName v$ScriptVersion"; }
 
 fatal_error() {
     echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr; exit ${2:1}
@@ -68,7 +70,7 @@ debug_all_gists() {
     for_each_gist_owned_by "$UserName" debug_gist
 }
 
-#============================== FOR EACH GIST ===============================#
+#============================== FOR EACH GIST ==============================#
 
 ## Group of funtions to be used with 'for_each_gist_owned_by'
 ##
@@ -122,7 +124,29 @@ for_each_gist_owned_by() {
     proc_gist_properties $gistfunction "${properties[@]}"
 }
 
-#=================================== MISC ===================================#
+#=============================== GITHUB API ================================#
+
+## Prints data from all gists in JSON format
+## [ https://docs.github.com/en/rest/gists/gists ]
+print_json_gists_data() {
+    local wget
+    if   hash wget &>/dev/null; then wget=( wget --quiet -O- )
+    elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
+    else fatal_error "curl or wget must be installed in the system"
+    fi
+    if [ ! -z "$UserToken" ]; then
+        "${wget[@]}" \
+          --header "Accept: application/vnd.github.v3+json" \
+          --header "Authorization: token $UserToken"        \
+          "https://api.github.com/gists"
+    else
+        "${wget[@]}" \
+          --header "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/users/$UserName/gists"
+    fi    
+}
+
+#================================== MISC ===================================#
 
 ## Execute a function on every gist reported by the provided properties
 ##
@@ -205,16 +229,17 @@ generate_dir() {
     echo "${OutputDir}/$directory"
 }
 
-#================================== START ===================================#
+#================================== START ==================================#
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s | --ssh)     Command=ssh_clone_all_gists ;;
-        -n | --dry-run) DryRun=echo                 ;;
-        -l | --list)    Command=enumerate_all_gists ;;
-        -d | --debug)   Command=debug_all_gists     ;;
-        -h | --help)    Command=show_help           ;;
-        -v | --version) Command=print_version       ;;
+        -s | --ssh)     Command=ssh_clone_all_gists   ;;
+        -n | --dry-run) DryRun=echo                   ;;
+        -l | --list)    Command=enumerate_all_gists   ;;
+        -d | --debug)   Command=debug_all_gists       ;;
+        -j | --json)    Command=print_json_gists_data ;;
+        -h | --help)    Command=show_help             ;;
+        -v | --version) Command=print_version         ;;
         -*)             Command='fatal_error';Error="Unknown option '$1'" ;;
         *)
           if   [ -z "$UserName" ]; then UserName="$1"
@@ -225,6 +250,11 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+
+# update UserName / UserToken
+if [ "${UserName:0:2}" = gh ] && [ ${#UserName} -ge 36 ]; then
+    UserToken="$UserName"
+fi
 
 # update output directory
 OutputDir=${UserDir:-$OutputDir}
