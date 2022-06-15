@@ -27,7 +27,7 @@ function show_help() {
 cat <<-HELP
 
 Usage:
-  $ScriptName [OPTIONS] USER
+  $ScriptName [OPTIONS] USERNAME
 
 Downloads all gists for a specific user.
 
@@ -44,7 +44,7 @@ HELP
 }
 
 function print_version() {
-    echo "$ScriptName $ScriptVersion/n"
+    echo "$ScriptName v$ScriptVersion"
 }
 
 function fatal_error() {
@@ -52,20 +52,24 @@ function fatal_error() {
     exit ${2:1}
 }
 
-function enumerate_all_gists() {
-    for_each_gist_owned_by "$UserName" enumerate_gist
-}
-
-function debug_all_gists() {
-    for_each_gist_owned_by "$UserName" debug_gist
-}
-
 function clone_all_gists() {
+    [ -z "$UserName" ] && show_help && exit 0
     for_each_gist_owned_by "$UserName" clone_gist
 }
 
 function ssh_clone_all_gists() {
+    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_gist_owned_by "$UserName" ssh_clone_gist
+}
+
+function enumerate_all_gists() {
+    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    for_each_gist_owned_by "$UserName" enumerate_gist
+}
+
+function debug_all_gists() {
+    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    for_each_gist_owned_by "$UserName" debug_gist
 }
 
 #============================== FOR EACH GIST ===============================#
