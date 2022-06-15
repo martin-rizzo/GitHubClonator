@@ -1,6 +1,7 @@
 #!/bin/bash
-# AUTHOR: martinrizzo@gmail.com
-# DESC:   Bash script to download all gists owned by a user
+#  Bash script to download all gists owned by a user
+#  https://gist.github.com/martin-rizzo/31d941aede20eefea219a6c52b5cd6b5
+#  by Martin Rizzo
 
 # CONSTANTS (can be modified by the arguments passed to the script)
 AllowSpacesInDir=false   # true = allow spaces in directory names
@@ -10,7 +11,7 @@ OutputDir='.'
 DryRun=
 UserName=
 UserDir=
-Command='clone_user_gists'
+Command='clone_all_gists'
 ScriptName=${0##*/}
 ScriptVersion=0.1
 Red='\033[1;31m'
@@ -34,7 +35,7 @@ Options:
         --ssh       Clone gists using ssh (SSH keys must be configured)
     -n, --dry-run   Do not actually run any commands; just print them.
     -l, --list      List the user gists
-    -X              Print detailed info about each gist
+        --debug     Print internal info about each gist
 
     -h, --help      Print this help
         --version   Print script version
@@ -51,15 +52,15 @@ function fatal_error() {
     exit ${2:1}
 }
 
-function list_user_gists() {
-    for_each_gist_owned_by "$UserName" print_gist_name
+function enumerate_all_gists() {
+    for_each_gist_owned_by "$UserName" enumerate_gist
 }
 
-function detail_user_gists() {
-    for_each_gist_owned_by "$UserName" print_gist_details
+function debug_all_gists() {
+    for_each_gist_owned_by "$UserName" debug_gist
 }
 
-function clone_user_gists() {
+function clone_all_gists() {
     for_each_gist_owned_by "$UserName" clone_gist
 }
 
@@ -86,14 +87,14 @@ function ssh_clone_gist() {
     local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
     $DryRun git clone "$ssh_url" "$directory"
 }
-function print_gist_name() {
+function enumerate_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     if [ "$description" = '""' ]; then
         description=$html_url
     fi
     printf "%3d: " $index; echo "$description"
 }
-function print_gist_details() {
+function debug_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     echo "$description"
     echo "    WEBPAGE   $html_url"
@@ -215,10 +216,10 @@ while test $# -gt 0; do
           Command='ssh_clone_all_gists'
           ;;
         -l | --list)
-          Command='list_user_gists'
+          Command='enumerate_all_gists'
           ;;
-        -X)
-          Command='detail_user_gists'
+        --debug)
+          Command='debug_all_gists'
           ;;
         -h | --help)
           Command='show_help'
