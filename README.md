@@ -1,2 +1,8 @@
-# CloneAllRepos
-Bash script to clone all repos owned by a user
+<center>
+
+GitHubClonator
+==============
+Bash scripts to clone all gists and GitHub repositories owned by a user.
+
+</center>
+
