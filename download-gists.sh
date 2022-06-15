@@ -9,13 +9,13 @@ Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 Downloads all gists for a specific user.
 
 Options:
-      --ssh       Clone gists using ssh (SSH keys must be configured)
+  -s, --ssh       Clone gists using ssh (SSH keys must be configured)
   -n, --dry-run   Do not actually run any commands; just print them.
   -l, --list      List user gists
-      --debug     List user gists with detailed info
+  -d, --debug     List user gists with detailed info
 
   -h, --help      Print this help
-      --version   Print script version
+  -v, --version   Print script version
         
 Examples:
   $ScriptName -l martin-rizzo   List all public gists owned by martin-rizzo
@@ -210,36 +210,19 @@ function generate_dir() {
 
 #================================== START ===================================#
 
-while test $# -gt 0; do
+while [ $# -gt 0 ]; do
     case "$1" in
-        -n | --dry-run)
-          DryRun=echo
-          ;;
-        --ssh)
-          Command='ssh_clone_all_gists'
-          ;;
-        -l | --list)
-          Command='enumerate_all_gists'
-          ;;
-        --debug)
-          Command='debug_all_gists'
-          ;;
-        -h | --help)
-          Command='show_help'
-          ;;
-        --version)
-          Command='print_version'
-          ;;
-        -*)
-          Command='fatal_error';Error="Unknown option '$1'"
-          ;;
+        -s | --ssh)     Command=ssh_clone_all_gists ;;
+        -n | --dry-run) DryRun=echo                 ;;
+        -l | --list)    Command=enumerate_all_gists ;;
+        -d | --debug)   Command=debug_all_gists     ;;
+        -h | --help)    Command=show_help           ;;
+        -v | --version) Command=print_version       ;;
+        -*)             Command='fatal_error';Error="Unknown option '$1'" ;;
         *)
-          if   [ -z "$UserName"    ]; then
-               UserName=$1
-          elif [ -z "$UserDir" ]; then
-               UserDir=$1
-          else
-              Command='fatal_error';Error="Unsupported extra argument '$1'"
+          if   [ -z "$UserName" ]; then UserName="$1"
+          elif [ -z "$UserDir"  ]; then UserDir="$1"
+          else Command='fatal_error';Error="Unsupported extra argument '$1'"
           fi
           ;;
     esac

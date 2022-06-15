@@ -247,7 +247,7 @@ print_local_directory() {
 
 #================================== START ===================================#
 
-while test $# -gt 0; do
+while [ $# -gt 0 ]; do
     case "$1" in
         -s | --ssh)      Command=ssh_clone_all_repos ;;
         -n | --dry-run)  DryRun=echo                 ;;
@@ -260,8 +260,8 @@ while test $# -gt 0; do
         -v | --version)  Command=print_version       ;;
         -*)              Command='fatal_error';Error="unknown option '$1'" ;;
         *)
-          if   [ -z "$UserName"  ]; then UserName="$1"
-          elif [ -z "$BaseDir"   ]; then BaseDir="$1"
+          if   [ -z "$UserName" ]; then UserName="$1"
+          elif [ -z "$BaseDir"  ]; then BaseDir="$1"
           else Command='fatal_error';Error="unsupported extra argument '$1'"
           fi
           ;;
