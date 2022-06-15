@@ -75,32 +75,39 @@ debug_all_gists() {
 ## Group of funtions to be used with 'for_each_gist()'
 ##
 ## @param index         Position of the gist within the list
-## @param directory     The local directory where clone the gist
+## @param owner         The login name of the owner of the gist
 ## @param description   A text describing the gist
+## @param directory     The local directory where clone the gist
+## @param public        "false" when the gists is secret
 ## @param html_url      The URL of the gist page on GitHub
 ## @param git_pull_url  The URL to pull/clone the gist
+## @param ssh_url       The URL to clone the gist using SSH
 ##
 clone_gist() {
-    local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
     $DryRun git clone "$git_pull_url" "$directory"
 }
 ssh_clone_gist() {
-    local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
     local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
     $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_gist() {
-    local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
-    local privchar='.'
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
+    local privchar
+    [ "$public" = 'false' ] && privchar='#' || privchar='.'
     [ "$description" = '""' ] && description="$html_url" 
     printf "%3d %s %s\n" $index "$privchar" "$description"
 }
 debug_gist() {
-    local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
-    echo "$description"
-    echo "    WEBPAGE   $html_url"
-    echo "    GIT URL   $git_pull_url"
-    echo "    DIRECTORY $directory"
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
+    echo "$index) $description"
+    echo "  owner     : $owner"
+    echo "  directory : $directory"
+    echo "  public    : $public"
+    echo "  webpage   : $html_url"
+    echo "  git url   : $git_pull_url"
+    echo "  ssh url   : $ssh_url"
     echo
 }
 
@@ -174,8 +181,9 @@ for_each_gist_using_properties() {
             if [ ! -z "$html_url" ] && [ ! -z "$git_pull_url" ]; then
                 ((index++))
                 directory=$(generate_dir "$dirfilter" "$description" "$html_url")
-                "$gistfunction" $index "$directory" "$description" "$html_url" "$git_pull_url"
-                owner=;description=;directory=;html_url=;git_pull_url=;ssh_url=
+                ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
+                "$gistfunction" $index "$owner" "$description" "$directory" "$public" "$html_url" "$git_pull_url" "$ssh_url"
+                owner=;description=;directory=;public=;html_url=;git_pull_url=;ssh_url=
             fi
         esac
         shift
@@ -185,7 +193,7 @@ for_each_gist_using_properties() {
 #=============================== GITHUB API ================================#
 
 ## Prints data from all gists in var/value format
-## [ https://docs.github.com/en/rest/repos/repos ]
+## [ https://docs.github.com/en/rest/gists/gists ]
 print_varvalue_gists_data() {
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
@@ -206,7 +214,6 @@ print_json_gists_data() {
     elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
     else fatal_error "curl or wget must be installed in the system"
     fi
-    echo UserToken = $UserToken > /dev/stderr
     if [ ! -z "$UserToken" ]; then
         "${wget[@]}" \
           --header "Accept: application/vnd.github.v3+json" \
