@@ -38,42 +38,39 @@ Defcol='\033[0m'
 # COMMANDS USED IN THIS SCRIPT
 ExternCommands='test read grep awk sed git'
 
-#=========================== MAIN SCRIPT COMMANDS ===========================#
+#============================== MAIN COMMANDS ==============================#
 
-function show_help() { echo "$Help"; }
+show_help() { echo "$Help"; }
 
-function print_version() {
-    echo "$ScriptName v$ScriptVersion"
+print_version() { echo "$ScriptName v$ScriptVersion" }
+
+fatal_error() {
+    echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr; exit ${2:1}
 }
 
-function fatal_error() {
-    echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr
-    exit ${2:1}
-}
-
-function clone_all_gists() {
+clone_all_gists() {
     [ -z "$UserName" ] && show_help && exit 0
     for_each_gist_owned_by "$UserName" clone_gist
 }
 
-function ssh_clone_all_gists() {
+ssh_clone_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_gist_owned_by "$UserName" ssh_clone_gist
 }
 
-function enumerate_all_gists() {
+enumerate_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_gist_owned_by "$UserName" enumerate_gist
 }
 
-function debug_all_gists() {
+debug_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_gist_owned_by "$UserName" debug_gist
 }
 
 #============================== FOR EACH GIST ===============================#
 
-## Functions to be used with 'for_each_gist_owned_by'
+## Group of funtions to be used with 'for_each_gist_owned_by'
 ##
 ## @param index         Position of the gist within the list
 ## @param directory     The local directory where clone the gist
@@ -81,23 +78,23 @@ function debug_all_gists() {
 ## @param html_url      The URL of the gist page on GitHub
 ## @param git_pull_url  The URL to pull/clone the gist
 ##
-function clone_gist() {
+clone_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     $DryRun git clone "$git_pull_url" "$directory"
 }
-function ssh_clone_gist() {
+ssh_clone_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
     $DryRun git clone "$ssh_url" "$directory"
 }
-function enumerate_gist() {
+enumerate_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     if [ "$description" = '""' ]; then
         description=$html_url
     fi
     printf "%3d: " $index; echo "$description"
 }
-function debug_gist() {
+debug_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
     echo "$description"
     echo "    WEBPAGE   $html_url"
@@ -111,7 +108,7 @@ function debug_gist() {
 ## @param username      The username of the gist owner
 ## @param gistfunction  The function to execute on each gist
 ##
-function for_each_gist_owned_by() {
+for_each_gist_owned_by() {
     local username=$1 gistfunction=$2
     local url="https://api.github.com/users/$username/gists"
     local properties
@@ -142,7 +139,7 @@ function for_each_gist_owned_by() {
 ##     A long list of arguments in the form of name/value pair;
 ##     each pair represent a property in the JSON returned by github.
 ##
-function proc_gist_properties() {
+proc_gist_properties() {
     local gistfunction=$1
     local dirfilter
     local index=0
@@ -199,7 +196,7 @@ function proc_gist_properties() {
     done
 }
 
-function generate_dir() {
+generate_dir() {
     local dirfilter=$1 description=$2 html_url=$3
 
     local directory=$(sed "$dirfilter" <<<"$description")
