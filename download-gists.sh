@@ -52,27 +52,27 @@ fatal_error() {
 
 clone_all_gists() {
     [ -z "$UserName" ] && show_help && exit 0
-    for_each_gist_owned_by "$UserName" clone_gist
+    for_each_gist clone_gist
 }
 
 ssh_clone_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist_owned_by "$UserName" ssh_clone_gist
+    for_each_gist ssh_clone_gist
 }
 
 enumerate_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist_owned_by "$UserName" enumerate_gist
+    for_each_gist enumerate_gist
 }
 
 debug_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist_owned_by "$UserName" debug_gist
+    for_each_gist debug_gist
 }
 
 #============================== FOR EACH GIST ==============================#
 
-## Group of funtions to be used with 'for_each_gist_owned_by'
+## Group of funtions to be used with 'for_each_gist()'
 ##
 ## @param index         Position of the gist within the list
 ## @param directory     The local directory where clone the gist
@@ -91,10 +91,9 @@ ssh_clone_gist() {
 }
 enumerate_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
-    if [ "$description" = '""' ]; then
-        description=$html_url
-    fi
-    printf "%3d: " $index; echo "$description"
+    local privchar='.'
+    [ "$description" = '""' ] && description="$html_url" 
+    printf "%3d %s %s\n" $index "$privchar" "$description"
 }
 debug_gist() {
     local index=$1 directory=$2 description=$3 html_url=$4 git_pull_url=$5
@@ -107,24 +106,97 @@ debug_gist() {
 
 ## Iterate over all user's gist and execute a function on each one
 ##
-## @param username      The username of the gist owner
-## @param gistfunction  The function to execute on each gist
+## @param gistfunction
+##     The function to execute on each gist
 ##
-for_each_gist_owned_by() {
-    local username=$1 gistfunction=$2
-    local url="https://api.github.com/users/$username/gists"
+for_each_gist() {
     local properties
+    IFS=$'\n' read -r -d '' -a properties < <( print_varvalue_gists_data && printf '\0' )
+    for_each_gist_using_properties "$1" "${properties[@]}"
 
-    IFS=$'\n' read -r -d '' -a properties < <( curl "$url" | \
-        grep '\"html_url\"\|\"git_pull_url\"\|\"description\"' | \
-        sed 's/:/\n/;s/,$//' | \
-        sed 's/^[[:space:]]*//;s/[[space:]]*$//' \
-        && printf '\0' )
+}
 
-    proc_gist_properties $gistfunction "${properties[@]}"
+## Execute a function on every gist reported by the provided properties
+##
+## Property supply starts at the second argument. The second argument is
+## a property name; the third argument is the value of that property; the
+## fourth is the next property name; the fifth is its value; and so on in
+## that orden.
+## A argument equal to a closed curly bracket "}" marks the end of each
+## gist.
+##
+## @param gistfunction
+##     The function to execute for each gist
+##
+## @param properties
+##     A long list of arguments in the form of name/value pair;
+##     each pair represent a property in the JSON returned by github.
+##
+for_each_gist_using_properties() {
+    local gistfunction=$1 properties
+    local index=0 dirfilter allowedchars
+    local owner description directory public html_url git_pull_url ssh_url
+    local remove_quotes='sub(/^\"/,"");sub(/\"$/,"")'
+
+    #-- generate directory filter -----
+    allowedchars='A-Za-z0-9'
+    if $AllowSpacesInDir ; then
+       allowedchars="${allowedchars} "
+    fi
+    if $AllowDotsInDir ; then
+        allowedchars="${allowedchars}\."
+    fi
+    dirfilter='s/^"//;s/"$//;'"s/[^${allowedchars}]/_/g"
+    if [ "$MaxDirLength" -gt 0 ]; then
+        dirfilter="$dirfilter;s/^\(.\{$MaxDirLength\}\).*\$/\1/"
+    fi
+    #-- process each property ---------
+    shift
+    while test $# -gt 0; do
+        case "$1" in
+            '"login"')
+              shift; owner=$(awk "{$remove_quotes}1" <<<"$1")
+              ;;
+            '"description"')
+              shift; description=$1
+              ;;
+            '"public"')
+              shift; public=$(awk "{$remove_quotes}1" <<<"$1")
+              ;;
+            '"html_url"')
+              shift; html_url=$(awk "{$remove_quotes}1" <<<"$1")
+              ;;
+            '"git_pull_url"')
+              shift
+              git_pull_url=$(awk "{$remove_quotes}1" <<<"$1")
+              ;;
+            '}') # end of current gist
+            if [ ! -z "$html_url" ] && [ ! -z "$git_pull_url" ]; then
+                ((index++))
+                directory=$(generate_dir "$dirfilter" "$description" "$html_url")
+                "$gistfunction" $index "$directory" "$description" "$html_url" "$git_pull_url"
+                owner=;description=;directory=;html_url=;git_pull_url=;ssh_url=
+            fi
+        esac
+        shift
+    done
 }
 
 #=============================== GITHUB API ================================#
+
+## Prints data from all gists in var/value format
+## [ https://docs.github.com/en/rest/repos/repos ]
+print_varvalue_gists_data() {
+    # super quick and dirty code to parse json with awk
+    # kids, don't do it at home!!!
+    print_json_gists_data | awk '
+        /\{/{++s} 
+        (s==1 && (/\"html_url\"/||/\"description\"/||/\"public\"/||/\"git_pull_url\"/)) ||
+        (s==2 && (/\"login"/)) {
+            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
+        }
+        /\}/{--s} s==0 { print "}" } '
+}
 
 ## Prints data from all gists in JSON format
 ## [ https://docs.github.com/en/rest/gists/gists ]
@@ -134,6 +206,7 @@ print_json_gists_data() {
     elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
     else fatal_error "curl or wget must be installed in the system"
     fi
+    echo UserToken = $UserToken > /dev/stderr
     if [ ! -z "$UserToken" ]; then
         "${wget[@]}" \
           --header "Accept: application/vnd.github.v3+json" \
@@ -147,78 +220,6 @@ print_json_gists_data() {
 }
 
 #================================== MISC ===================================#
-
-## Execute a function on every gist reported by the provided properties
-##
-## Properties definition starts at the second argument. The second
-## argument is a property name; the third is its value; the fourth
-## is the next property name; the fifth is its value; and so on in
-## that orden. Only 3 properties are taken into account: "html_url",
-## "git_pull_url" & "description".
-##
-## @param gistfunction
-##     The function to execute for each gist
-##
-## @param properties
-##     A long list of arguments in the form of name/value pair;
-##     each pair represent a property in the JSON returned by github.
-##
-proc_gist_properties() {
-    local gistfunction=$1
-    local dirfilter
-    local index=0
-    local allowedchars
-    local directory
-    local description
-    local html_url
-    local git_pull_url
-
-    #-- generate directory filter --------
-    allowedchars='A-Za-z0-9'
-    if $AllowSpacesInDir ; then
-       allowedchars="${allowedchars} "
-    fi
-    if $AllowDotsInDir ; then
-        allowedchars="${allowedchars}\."
-    fi
-    dirfilter='s/^"//;s/"$//;'"s/[^${allowedchars}]/_/g"
-    if [ "$MaxDirLength" -gt 0 ]; then
-        dirfilter="$dirfilter;s/^\(.\{$MaxDirLength\}\).*\$/\1/"
-    fi
-
-    #-- process each property -----------
-    shift
-    while test $# -gt 0; do
-        case "$1" in
-            '"html_url"')
-              shift
-              html_url=$(sed 's/^"//;s/"$//' <<<"$1")
-              ;;
-            '"git_pull_url"')
-              shift
-              git_pull_url=$(sed 's/^"//;s/"$//' <<<"$1")
-              ;;
-            '"description"')
-              shift
-              description=$1
-              directory=$(generate_dir "$dirfilter" "$description" "$html_url")
-              ;;
-        esac
-        if [ ! -z "$directory"   -a \
-             ! -z "$description" -a \
-             ! -z "$html_url"    -a \
-             ! -z "$git_pull_url"   ]
-        then
-            ((index++))
-            "$gistfunction" $index "$directory" "$description" "$html_url" "$git_pull_url"
-            directory=''
-            description=''
-            html_url=''
-            git_pull_url=''
-        fi
-        shift
-    done
-}
 
 generate_dir() {
     local dirfilter=$1 description=$2 html_url=$3
