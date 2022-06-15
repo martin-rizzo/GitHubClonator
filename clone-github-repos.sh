@@ -14,6 +14,7 @@ Options:
   -n, --dry-run    Do not actually run any commands; just print them
   -l, --list       List user repositories
   -d, --debug      List user repositories with detailed info
+  -j, --json       Print the raw JSON containing the repositories details
 
   -gt, --by-topic  Group repos in dirs based on its topics (default)
   -gl, --by-list   Group repos in dirs based on stars list
@@ -75,9 +76,8 @@ debug_all_repos() {
 }
 
 #============================== FOR EACH REPO ===============================#
-#    local html_url description clone_url ssh_url
 
-## Group of funtions to be used with 'for_each_repo_owned_by'
+## Group of funtions to be used with 'for_each_repo()'
 ##
 ## @param index         Position of the repo within the list
 ## @param name          The name of the repository 
@@ -116,7 +116,9 @@ debug_repo() {
 }
 
 ## Iterates over all user's repos and execute a function on each one
-## @param repofunction  The function to execute on each repo
+##
+## @param repofunction
+##     The function to execute on each repo
 ##
 for_each_repo() {
     local repofunction=$1
@@ -125,7 +127,7 @@ for_each_repo() {
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
     IFS=$'\n' read -r -d '' -a properties < <( print_varvalue_repo_data && printf '\0' )
-    proc_repo_properties "$repofunction" "${properties[@]}"
+    for_each_repo_properties "$repofunction" "${properties[@]}"
 }
 
 ## Executes a function on every repo reported by the provided properties
@@ -138,12 +140,11 @@ for_each_repo() {
 ##
 ## @param repofunction
 ##     The function to execute for each repo
-##
 ## @param properties
 ##     A long list of arguments in the form of name/value pair;
 ##     each pair represent a property in the JSON returned by github.
 ##
-proc_repo_properties() {
+for_each_repo_properties() {
     local repofunction=$1
     local index=0 topic
     local name owner html_url description clone_url ssh_url
@@ -249,15 +250,16 @@ print_local_directory() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s | --ssh)      Command=ssh_clone_all_repos ;;
-        -n | --dry-run)  DryRun=echo                 ;;
-        -l | --list)     Command=enumerate_all_repos ;;
-        -d | --debug)    Command=debug_all_repos     ;;
-        -gt| --by-topic) Group='--by-topic'          ;;
-        -gl| --by-list)  Group='--by-list'           ;;
-        -gn| --no-group) Group='--no-group'          ;; 
-        -h | --help)     Command=show_help           ;;
-        -v | --version)  Command=print_version       ;;
+        -s | --ssh)      Command=ssh_clone_all_repos  ;;
+        -n | --dry-run)  DryRun=echo                  ;;
+        -l | --list)     Command=enumerate_all_repos  ;;
+        -d | --debug)    Command=debug_all_repos      ;;
+        -j | --json)     Command=print_json_repo_data ;;
+        -gt| --by-topic) Group='--by-topic'           ;;
+        -gl| --by-list)  Group='--by-list'            ;;
+        -gn| --no-group) Group='--no-group'           ;; 
+        -h | --help)     Command=show_help            ;;
+        -v | --version)  Command=print_version        ;;
         -*)              Command='fatal_error';Error="unknown option '$1'" ;;
         *)
           if   [ -z "$UserName" ]; then UserName="$1"
