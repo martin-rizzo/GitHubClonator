@@ -24,12 +24,11 @@ Examples:
 "
 
 # CONSTANTS (can be modified by the arguments passed to the script)
-AllowSpacesInDir=false   # true = allow spaces in directory names
-AllowDotsInDir=false     # true = allow dots in directory names
-MaxDirLength=64          # maximum directory length (0 = no limit)
-UserDir=
-OutputDir='.'
-DryRun=
+AllowSpacesInDir=false    # true = allow spaces in directory names
+AllowDotsInDir=false      # true = allow dots in directory names
+MaxDirLength=64           # maximum directory length (0 = no limit)
+BaseDir=                  # base directory where the repos will be stored
+DryRun=                   # set this var to 'echo' to do a dry-run
 UserName=                 # github account name provided by the user
 UserToken=                # github personal access token provided by the user
 Command='clone_all_gists' # main command to execute
@@ -57,7 +56,7 @@ enumerate_all_gists() {
 
 detail_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist debug_gist
+    for_each_gist detail_gist
 }
 
 clone_all_gists() {
@@ -84,30 +83,33 @@ ssh_clone_all_gists() {
 ## @param ssh_url       The URL to clone the gist using SSH
 ##
 clone_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
-    $DryRun git clone "$git_pull_url" "$directory"
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local html_url="$6" git_pull_url="$7" ssh_url="$8"
+    $DryRun mkdir -p "$directory" && $DryRun git clone "$git_pull_url" "$directory"
 }
 ssh_clone_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
-    local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
-    $DryRun git clone "$ssh_url" "$directory"
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local html_url="$6" git_pull_url="$7" ssh_url="$8"
+    $DryRun mkdir -p "$directory" && $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
-    local privchar
-    [ "$public" = 'false' ] && privchar='#' || privchar='.'
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local html_url="$6" git_pull_url="$7" ssh_url="$8"
+    local vchar
+    [ "$public" = 'false' ] && vchar='#' || vchar='.'
     [ "$description" = '""' ] && description="$html_url" 
-    printf "%3d %s %s\n" $index "$privchar" "$description"
+    printf "%3d %s %s\n" $index "$vchar" "$description"
 }
-debug_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
+detail_gist() {
+    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local html_url="$6" git_pull_url="$7" ssh_url="$8"
     echo "$index:$description"
     echo "    owner     : $owner"
+    echo "    directory : $directory"
     echo "    public    : $public"
     echo "    webpage   : $html_url"
     echo "    git url   : $git_pull_url"
     echo "    ssh url   : $ssh_url"
-    echo "    directory : $directory"
     echo
 }
 

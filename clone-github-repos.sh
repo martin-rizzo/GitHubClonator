@@ -90,16 +90,14 @@ ssh_clone_all_repos() {
 ## @param ssh_url       The code to clone the repo using SSH
 ##
 clone_repo() {
-    fatal_error "clone repository isn't supported yet"
     local index=$1 name=$2 owner=$3 description=$4 visibility=$5
     local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
-    $DryRun git clone "$git_pull_url" "$directory"
+    $DryRun mkdir -p "$directory" && $DryRun git clone "$clone_url" "$directory"
 }
 ssh_clone_repo() {
-    fatal_error "clone repository with ssh isn't supported yet"
     local index=$1 name=$2 owner=$3 description=$4 visibility=$5
     local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
-    $DryRun git clone "$ssh_url" "$directory"
+    $DryRun mkdir -p "$directory" && $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_repo() {
     local index=$1 name=$2 owner=$3 description=$4 visibility=$5
