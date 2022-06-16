@@ -265,7 +265,7 @@ print_url_with_user_pass() {
     if [ -z "$user" ]; then echo "$url"
     else
        [ "$pass" ] && user="$user:$pass"
-       awk 'sub(/:\/\//,":\/\/'"$user"'@")1' <<<"$url"
+       awk 'sub(/:\/\//,"://'"$user"'@")1' <<<"$url"
     fi
 }
 
