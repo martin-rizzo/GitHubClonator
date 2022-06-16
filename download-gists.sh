@@ -30,12 +30,12 @@ MaxDirLength=64          # maximum directory length (0 = no limit)
 UserDir=
 OutputDir='.'
 DryRun=
-UserName=
-UserToken=
-Command='clone_all_gists'
-Red='\033[1;31m'
-Green='\033[1;32m'
-Defcol='\033[0m'
+UserName=                 # github account name provided by the user
+UserToken=                # github personal access token provided by the user
+Command='clone_all_gists' # main command to execute
+Red='\033[1;31m'          # ANSI red color
+Green='\033[1;32m'        # ANSI green color
+Defcol='\033[0m'          # ANSI default color
 
 # COMMANDS USED IN THIS SCRIPT
 ExternCommands='test read grep awk sed git'
@@ -101,17 +101,17 @@ enumerate_gist() {
 }
 debug_gist() {
     local index=$1 owner="$2" description="$3" directory="$4" public="$5" html_url="$6" git_pull_url="$7" ssh_url="$8"
-    echo "$index) $description"
-    echo "  owner     : $owner"
-    echo "  directory : $directory"
-    echo "  public    : $public"
-    echo "  webpage   : $html_url"
-    echo "  git url   : $git_pull_url"
-    echo "  ssh url   : $ssh_url"
+    echo "$index:$description"
+    echo "    owner     : $owner"
+    echo "    public    : $public"
+    echo "    webpage   : $html_url"
+    echo "    git url   : $git_pull_url"
+    echo "    ssh url   : $ssh_url"
+    echo "    directory : $directory"
     echo
 }
 
-## Iterate over all user's gist and execute a function on each one
+## Iterates over all user's gist and execute a function on each one
 ##
 ## @param gistfunction
 ##     The function to execute on each gist
@@ -123,7 +123,7 @@ for_each_gist() {
 
 }
 
-## Execute a function on every gist reported by the provided properties
+## Executes a function on every gist reported by the provided properties
 ##
 ## Property supply starts at the second argument. The second argument is
 ## a property name; the third argument is the value of that property; the
@@ -180,7 +180,7 @@ for_each_gist_using_properties() {
             '}') # end of current gist
             if [ ! -z "$html_url" ] && [ ! -z "$git_pull_url" ]; then
                 ((index++))
-                directory=$(generate_dir "$dirfilter" "$description" "$html_url")
+                directory=$(print_local_directory "$dirfilter" "$description" "$html_url")
                 ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
                 "$gistfunction" $index "$owner" "$description" "$directory" "$public" "$html_url" "$git_pull_url" "$ssh_url"
                 owner=;description=;directory=;public=;html_url=;git_pull_url=;ssh_url=
@@ -228,13 +228,21 @@ print_json_gists_data() {
 
 #================================== MISC ===================================#
 
-generate_dir() {
+## Prints the path for the local directory where the repository will be cloned
+print_local_directory() {
     local dirfilter=$1 description=$2 html_url=$3
-
-    local directory=$(sed "$dirfilter" <<<"$description")
-    local alphachars=$(sed 's/^A-Za-z0-9//g' <<<"$directory")
-    [ ${#alphachars} -lt 5 ] && directory=$(sed "s/^.*:\/\///;$dirfilter" <<<"$html_url")
-    echo "${OutputDir}/$directory"
+    local root group_dir gist_dir=$(sed "$dirfilter" <<<"$description")
+    
+    # fix gist directory if it has too few alphanumeric characters
+    local alphachars=$(sed 's/^A-Za-z0-9//g' <<<"$gist_dir")
+    [ ${#alphachars} -lt 5 ] && gist_dir=$(sed "s/^.*:\/\///;$dirfilter" <<<"$html_url")
+    
+    if   [ "$BaseDir"               ]; then root="${BaseDir%/}/"
+    elif [ "$UserToken" -a "$owner" ]; then root="./${owner%/}/"
+    elif [ "$UserName"              ]; then root="./${UserName%/}/"
+    else                                    root="./GitHub/"
+    fi
+    echo "${root}${group_dir}${gist_dir}"
 }
 
 #================================== START ==================================#
@@ -248,13 +256,12 @@ while [ $# -gt 0 ]; do
         -j | --json)    Command=print_json_gists_data ;;
         -h | --help)    Command=show_help             ;;
         -v | --version) Command=print_version         ;;
-        -*)             Command='fatal_error';Error="Unknown option '$1'" ;;
-        *)
-          if   [ -z "$UserName" ]; then UserName="$1"
-          elif [ -z "$UserDir"  ]; then UserDir="$1"
-          else Command='fatal_error';Error="Unsupported extra argument '$1'"
-          fi
-          ;;
+        -*) Command='fatal_error';Error="Unknown option '$1'" ;;
+        *)  if   [ -z "$UserName" ]; then UserName="$1"
+            elif [ -z "$BaseDir"  ]; then BaseDir="$1"
+            else Command='fatal_error';Error="Unsupported extra argument '$1'"
+            fi
+            ;;
     esac
     shift
 done
@@ -263,13 +270,6 @@ done
 if [ "${UserName:0:2}" = gh ] && [ ${#UserName} -ge 36 ]; then
     UserToken="$UserName"
 fi
-
-# update output directory
-OutputDir=${UserDir:-$OutputDir}
-OutputDir=${OutputDir%/}
-
-# verify output directory exist
-[ ! -d "$OutputDir" ] && fatal_error "Directory '$OutputDir' does not exist"
 
 # execute script command
 "$Command"
