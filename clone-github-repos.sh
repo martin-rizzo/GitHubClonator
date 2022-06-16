@@ -191,6 +191,9 @@ for_each_repo_properties() {
             if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
                 ((index++))
                 directory=$(print_local_directory $index "$name" "$owner" "$topic")
+                if [ "$visibility" = 'private' ]; then
+                    clone_url=$(print_url_with_user_pass "$clone_url" "$UserToken")
+                fi
                 "$repofunction" $index "$name" "$owner" "$description" "$visibility" "$directory" "$html_url" "$clone_url" "$ssh_url"
                 name=;owner=;description=;visibility=;directory=;html_url=;clone_url=;ssh_url=;topic=
             fi
@@ -254,6 +257,16 @@ print_local_directory() {
     else                                    root="./GitHub/"
     fi
     echo "${root}${group_dir}${reponame}"
+}
+
+## Prints the provided URL but including user/pass into it
+print_url_with_user_pass() {
+    local url="$1" user="$2" pass="$3"
+    if [ -z "$user" ]; then echo "$url"
+    else
+       [ "$pass" ] && user="$user:$pass"
+       awk 'sub(/:\/\//,":\/\/'"$user"'@")1' <<<"$url"
+    fi
 }
 
 #================================== START ==================================#
