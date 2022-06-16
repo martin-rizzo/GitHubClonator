@@ -13,7 +13,7 @@ Options:
   -s, --ssh        Clone repos using ssh (SSH keys must be configured)
   -n, --dry-run    Do not actually run any commands; just print them
   -l, --list       List user repositories
-  -d, --debug      List user repositories with detailed info
+  -L, --xlist      List user repositories, including detailed info
   -j, --json       Print the raw JSON containing the repositories details
 
   -gt, --by-topic  Group repos in dirs based on its topics (default)
@@ -53,6 +53,16 @@ fatal_error() {
     echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr ; exit ${2:1}
 }
 
+enumerate_all_repos() {
+    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
+    for_each_repo enumerate_repo
+}
+
+detail_all_repos() {
+    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
+    for_each_repo detail_repo
+}
+
 clone_all_repos() {
     [ -z "$UserName" ] && show_help && exit 0
     [ -e "${BaseDir%/}" ] && fatal_error "directory '${BaseDir%/}' already exists"
@@ -63,16 +73,6 @@ ssh_clone_all_repos() {
     [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
     [ -e "${BaseDir%/}" ] && fatal_error "directory '${BaseDir%/}' already exists"
     for_each_repo ssh_clone_repo
-}
-
-enumerate_all_repos() {
-    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
-    for_each_repo enumerate_repo
-}
-
-debug_all_repos() {
-    [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
-    for_each_repo detail_repo
 }
 
 #============================== FOR EACH REPO ===============================#
@@ -253,7 +253,7 @@ while [ $# -gt 0 ]; do
         -s | --ssh)      Command=ssh_clone_all_repos  ;;
         -n | --dry-run)  DryRun=echo                  ;;
         -l | --list)     Command=enumerate_all_repos  ;;
-        -d | --debug)    Command=debug_all_repos      ;;
+        -L | --xlist)    Command=detail_all_repos     ;;
         -j | --json)     Command=print_json_repo_data ;;
         -gt| --by-topic) Group='--by-topic'           ;;
         -gl| --by-list)  Group='--by-list'            ;;

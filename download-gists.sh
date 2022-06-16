@@ -12,7 +12,7 @@ Options:
   -s, --ssh       Clone gists using ssh (SSH keys must be configured)
   -n, --dry-run   Do not actually run any commands; just print them.
   -l, --list      List user gists
-  -d, --debug     List user gists with detailed info
+  -L, --xlist     List user gists, including detailed info
   -j, --json      Print the raw JSON containing the gists details
 
   -h, --help      Print this help
@@ -50,6 +50,16 @@ fatal_error() {
     echo -e "${Red}ERROR:${Defcol}" "${1:-$Error}" >/dev/stderr; exit ${2:1}
 }
 
+enumerate_all_gists() {
+    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    for_each_gist enumerate_gist
+}
+
+detail_all_gists() {
+    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
+    for_each_gist debug_gist
+}
+
 clone_all_gists() {
     [ -z "$UserName" ] && show_help && exit 0
     for_each_gist clone_gist
@@ -58,16 +68,6 @@ clone_all_gists() {
 ssh_clone_all_gists() {
     [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
     for_each_gist ssh_clone_gist
-}
-
-enumerate_all_gists() {
-    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist enumerate_gist
-}
-
-debug_all_gists() {
-    [ -z "$UserName" ] && fatal_error 'Missing USERNAME parameter'
-    for_each_gist debug_gist
 }
 
 #============================== FOR EACH GIST ==============================#
@@ -252,7 +252,7 @@ while [ $# -gt 0 ]; do
         -s | --ssh)     Command=ssh_clone_all_gists   ;;
         -n | --dry-run) DryRun=echo                   ;;
         -l | --list)    Command=enumerate_all_gists   ;;
-        -d | --debug)   Command=debug_all_gists       ;;
+        -L | --xlist)   Command=detail_all_gists      ;;
         -j | --json)    Command=print_json_gists_data ;;
         -h | --help)    Command=show_help             ;;
         -v | --version) Command=print_version         ;;
