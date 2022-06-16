@@ -36,6 +36,7 @@ UserName=                 # github account name provided by the user
 UserToken=                # github personal access token provided by the user
 Command='clone_all_repos' # main command to execute
 Group='--by-topic'        # method used to group repositories
+GroupPrefix='grp-'        # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
 Defcol='\033[0m'          # ANSI default color
@@ -156,7 +157,7 @@ for_each_repo_properties() {
     local index=0 topic
     local name owner description visibility directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
-    local remove_dir_prefix='sub(/^"dir-/,"");sub(/"$/,"")'
+    local remove_dir_prefix='sub(/^"'$GroupPrefix'/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
     #-- process each property -----------
@@ -215,8 +216,8 @@ print_varvalue_repo_data() {
         (s==2 && (/"login"/)) {
             sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
         }
-        t==1 && /"dir-/ {
-            match($0,/"dir-[^"]*"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
+        t==1 && /"'$GroupPrefix'/ {
+            match($0,/"'$GroupPrefix'[^"]*"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
         }
         /\}/{--s} /]/{t=0} s==0 { print "}" } '
 }
@@ -238,7 +239,7 @@ print_json_repo_data() {
         "${wget[@]}" \
           --header "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/users/$UserName/repos"
-    fi    
+    fi
 }
 
 #================================== MISC ===================================#
