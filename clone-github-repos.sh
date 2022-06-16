@@ -32,8 +32,8 @@ Examples:
 MaxDirLength=64           # maximum directory length (0 = no limit)
 BaseDir=                  # base directory where the repos will be stored
 DryRun=                   # set this var to 'echo' to do a dry-run
-UserName=                 # name used for the github user account
-UserToken=
+UserName=                 # github account name provided by the user
+UserToken=                # github personal access token provided by the user
 Command='clone_all_repos' # main command to execute
 Group='--by-topic'        # method used to group repositories
 Red='\033[1;31m'          # ANSI red color
@@ -80,7 +80,7 @@ debug_all_repos() {
 ## Group of funtions to be used with 'for_each_repo()'
 ##
 ## @param index         Position of the repo within the list
-## @param name          The name of the repository 
+## @param name          The name of the repository
 ## @param owner         The login name of the owner of the repository
 ## @param description   A text describing the repo
 ## @param directory     The local directory where the repo will be cloned
@@ -123,23 +123,22 @@ debug_repo() {
 for_each_repo() {
     local repofunction=$1
     local properties
-    
-    # super quick and dirty code to parse json with awk
-    # kids, don't do it at home!!!
     IFS=$'\n' read -r -d '' -a properties < <( print_varvalue_repo_data && printf '\0' )
     for_each_repo_properties "$repofunction" "${properties[@]}"
 }
 
 ## Executes a function on every repo reported by the provided properties
 ##
-## Properties definition starts at the second argument. The second
-## argument is a property name; the third is its value; the fourth
-## is the next property name; the fifth is its value; and so on in
-## that orden. Only 6 properties are taken into account: "name",
-## "description", "html_url", "clone_url", "ssh_url" & "topic".
+## Property supply starts at the second argument. The second argument is
+## a property name; the third argument is the value of that property; the
+## fourth is the next property name; the fifth is its value; and so on in
+## that orden.
+## A argument equal to a closed curly bracket "}" marks the end of each
+## repo.
 ##
 ## @param repofunction
 ##     The function to execute for each repo
+##
 ## @param properties
 ##     A long list of arguments in the form of name/value pair;
 ##     each pair represent a property in the JSON returned by github.
@@ -147,7 +146,7 @@ for_each_repo() {
 for_each_repo_properties() {
     local repofunction=$1
     local index=0 topic
-    local name owner html_url description clone_url ssh_url
+    local name owner description directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
     local remove_dir_prefix='sub(/^"dir-/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
@@ -179,8 +178,8 @@ for_each_repo_properties() {
               ;;
             '}')
             if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
-                directory=$(print_local_directory $index "$name" "$owner" "$topic")
                 ((index++))
+                directory=$(print_local_directory $index "$name" "$owner" "$topic")
                 "$repofunction" $index "$name" "$owner" "$description" "$directory" "$html_url" "$clone_url" "$ssh_url"
                 name=;owner=;description=;directory=;html_url=;clone_url=;ssh_url=;topic=
             fi
@@ -230,7 +229,7 @@ print_json_repo_data() {
 
 #================================== MISC ===================================#
 
-## Prints the path for the local directory where repository will be cloned
+## Prints the path for the local directory where the repository will be cloned
 print_local_directory() {
     local index=$1 reponame=$2 owner=$3 topic=$4
     local root group_dir
@@ -238,15 +237,15 @@ print_local_directory() {
         --by-list)  group_dir="$list/" ;;
         --by-topic) [ ! -z "$topic" ] && group_dir="${topic%/}/" ;;
     esac
-    if   [ ! -z "$BaseDir"   ];                      then root="${BaseDir%/}/"
-    elif [ ! -z "$UserToken" ] && [ ! -z "$owner" ]; then root="./${owner%/}/"
-    elif [ ! -z "$UserName"  ];                      then root="./${UserName%/}/"
-    else                                                  root="./GitHub/"
+    if   [ "$BaseDir" ];               then root="${BaseDir%/}/"
+    elif [ "$UserToken" -a "$owner" ]; then root="./${owner%/}/"
+    elif [ "$UserName" ];              then root="./${UserName%/}/"
+    else                                    root="./GitHub/"
     fi
     echo "${root}${group_dir}${reponame}"
 }
 
-#================================== START ===================================#
+#================================== START ==================================#
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -260,13 +259,12 @@ while [ $# -gt 0 ]; do
         -gn| --no-group) Group='--no-group'           ;; 
         -h | --help)     Command=show_help            ;;
         -v | --version)  Command=print_version        ;;
-        -*)              Command='fatal_error';Error="unknown option '$1'" ;;
-        *)
-          if   [ -z "$UserName" ]; then UserName="$1"
-          elif [ -z "$BaseDir"  ]; then BaseDir="$1"
-          else Command='fatal_error';Error="unsupported extra argument '$1'"
-          fi
-          ;;
+        -*) Command='fatal_error';Error="unknown option '$1'" ;;
+        *)  if   [ -z "$UserName" ]; then UserName="$1"
+            elif [ -z "$BaseDir"  ]; then BaseDir="$1"
+            else Command='fatal_error';Error="unsupported extra argument '$1'"
+            fi
+            ;;
     esac
     shift
 done
