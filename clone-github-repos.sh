@@ -148,8 +148,8 @@ for_each_repo_properties() {
     local repofunction=$1
     local index=0 topic
     local name owner html_url description clone_url ssh_url
-    local remove_quotes='sub(/^\"/,"");sub(/\"$/,"")'
-    local remove_dir_prefix='sub(/^"dir-/,"");sub(/\"$/,"")'
+    local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
+    local remove_dir_prefix='sub(/^"dir-/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
     #-- process each property -----------
@@ -197,13 +197,13 @@ print_varvalue_repo_data() {
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
     print_json_repo_data | awk '
-        /\{/{++s} /\"topics\"/{t=1} 
-        (s==1 && (/\"name\"/||/\"html_url\"/||/\"description\"/||/\"clone_url\"/||/\"ssh_url\"/)) ||
-        (s==2 && (/\"login"/)) {
-            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
+        /\{/{++s} /"topics"/{t=1}
+        (s==1 && (/"name"/||/"html_url"/||/"description"/||/"clone_url"/||/"ssh_url"/)) ||
+        (s==2 && (/"login"/)) {
+            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
         }
-        t==1 && /\"dir-/ {
-            match($0,/\"dir-[^\"]*\"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
+        t==1 && /"dir-/ {
+            match($0,/"dir-[^"]*"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
         }
         /\}/{--s} /]/{t=0} s==0 { print "}" } '
 }

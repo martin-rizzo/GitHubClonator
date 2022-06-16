@@ -143,7 +143,7 @@ for_each_gist_using_properties() {
     local gistfunction=$1 properties
     local index=0 dirfilter allowedchars
     local owner description directory public html_url git_pull_url ssh_url
-    local remove_quotes='sub(/^\"/,"");sub(/\"$/,"")'
+    local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
 
     #-- generate directory filter -----
     allowedchars='A-Za-z0-9'
@@ -199,9 +199,9 @@ print_varvalue_gists_data() {
     # kids, don't do it at home!!!
     print_json_gists_data | awk '
         /\{/{++s} 
-        (s==1 && (/\"html_url\"/||/\"description\"/||/\"public\"/||/\"git_pull_url\"/)) ||
-        (s==2 && (/\"login"/)) {
-            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/\":[ \t]*/,"\"\n"); print
+        (s==1 && (/"html_url"/||/"description"/||/"public"/||/"git_pull_url"/)) ||
+        (s==2 && (/"login"/)) {
+            sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
         }
         /\}/{--s} s==0 { print "}" } '
 }
