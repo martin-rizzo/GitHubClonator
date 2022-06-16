@@ -165,7 +165,7 @@ for_each_gist_using_properties() {
               shift; owner=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"description"')
-              shift; description=$1
+              shift; [ "$1" != 'null' ] && description=$1 || description='""'
               ;;
             '"public"')
               shift; public=$(awk "{$remove_quotes}1" <<<"$1")

@@ -72,7 +72,7 @@ enumerate_all_repos() {
 
 debug_all_repos() {
     [ -z "$UserName" ] && fatal_error 'missing USERNAME parameter'
-    for_each_repo debug_repo
+    for_each_repo detail_repo
 }
 
 #============================== FOR EACH REPO ===============================#
@@ -101,9 +101,10 @@ ssh_clone_repo() {
 }
 enumerate_repo() {
     local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
+    [ "$description" == '""' ] && description='-'
     printf "%3d: %-16s %s\n" $index "$name" "$description"
 }
-debug_repo() {
+detail_repo() {
     local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
     echo "$index:$name"
     echo "    owner    : $owner"
@@ -162,7 +163,7 @@ for_each_repo_properties() {
               shift; owner=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"description"')
-              shift; description=$1
+              shift; [ "$1" != 'null' ] && description=$1 || description='""'
               ;;
             '"html_url"')
               shift; html_url=$(awk "{$remove_quotes}1" <<<"$1")
