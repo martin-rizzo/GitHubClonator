@@ -83,6 +83,7 @@ ssh_clone_all_repos() {
 ## @param name          The name of the repository
 ## @param owner         The login name of the owner of the repository
 ## @param description   A text describing the repo
+## @param visibility    Determines who can see this repo (public, private, internal)
 ## @param directory     The local directory where the repo will be cloned
 ## @param html_url      The URL of the repository's page on GitHub
 ## @param clone_url     The web URL to clone the repo
@@ -90,29 +91,37 @@ ssh_clone_all_repos() {
 ##
 clone_repo() {
     fatal_error "clone repository isn't supported yet"
-    local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
+    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
+    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
     $DryRun git clone "$git_pull_url" "$directory"
 }
 ssh_clone_repo() {
     fatal_error "clone repository with ssh isn't supported yet"
-    local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
-    local ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
+    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
+    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
     $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
-    [ "$description" == '""' ] && description='-'
-    printf "%3d: %-16s %s\n" $index "$name" "$description"
+    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
+    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
+    local vchar
+    case "$visibility" in
+        private) vchar='#' ;; internal) vchar='i' ;; *) vchar='.' ;;
+    esac
+    [ "$description" = '""' ] && description='-'
+    printf "%3d %s %-18s %s\n" $index "$vchar" "$name" "$description"
 }
 detail_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 directory=$5 html_url=$6 clone_url=$7 ssh_url=$8
+    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
+    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
     echo "$index:$name"
-    echo "    owner    : $owner"
-    echo "    directory: $directory"
-    echo "    descript : $description"
-    echo "    webpage  : $html_url"
-    echo "    git url  : $clone_url"
-    echo "    ssh url  : $ssh_url"
+    echo "    owner     : $owner"
+    echo "    directory : $directory"
+    echo "    descript  : $description"
+    echo "    visibility: $visibility"
+    echo "    webpage   : $html_url"
+    echo "    git url   : $clone_url"
+    echo "    ssh url   : $ssh_url"
     echo
 }
 
@@ -147,7 +156,7 @@ for_each_repo() {
 for_each_repo_properties() {
     local repofunction=$1
     local index=0 topic
-    local name owner description directory html_url clone_url ssh_url
+    local name owner description visibility directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
     local remove_dir_prefix='sub(/^"dir-/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
@@ -165,6 +174,9 @@ for_each_repo_properties() {
             '"description"')
               shift; [ "$1" != 'null' ] && description=$1 || description='""'
               ;;
+            '"visibility"')
+              shift; visibility=$(awk "{$remove_quotes}1" <<<"$1")
+              ;;
             '"html_url"')
               shift; html_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
@@ -181,8 +193,8 @@ for_each_repo_properties() {
             if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
                 ((index++))
                 directory=$(print_local_directory $index "$name" "$owner" "$topic")
-                "$repofunction" $index "$name" "$owner" "$description" "$directory" "$html_url" "$clone_url" "$ssh_url"
-                name=;owner=;description=;directory=;html_url=;clone_url=;ssh_url=;topic=
+                "$repofunction" $index "$name" "$owner" "$description" "$visibility" "$directory" "$html_url" "$clone_url" "$ssh_url"
+                name=;owner=;description=;visibility=;directory=;html_url=;clone_url=;ssh_url=;topic=
             fi
         esac
         shift
@@ -198,7 +210,7 @@ print_varvalue_repo_data() {
     # kids, don't do it at home!!!
     print_json_repo_data | awk '
         /\{/{++s} /"topics"/{t=1}
-        (s==1 && (/"name"/||/"html_url"/||/"description"/||/"clone_url"/||/"ssh_url"/)) ||
+        (s==1 && (/"name"/||/"html_url"/||/"description"/||/"visibility"/||/"clone_url"/||/"ssh_url"/)) ||
         (s==2 && (/"login"/)) {
             sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
         }
