@@ -5,7 +5,7 @@ GitHubClonator
 Bash scripts to clone and group all repos and gists owned by a user.
 
 ![Last Commit](https://img.shields.io/github/last-commit/martin-rizzo/GitHubClonator)
-![Code Size](https://img.shields.io/github/languages/code-size/martin-rizzo/GitHubClonator)
+![Platform](https://img.shields.io/badge/platform-macos_%7C_linux-lightgrey)
 [![License](https://img.shields.io/github/license/martin-rizzo/GitHubClonator)](LICENSE)
 
 </div>
