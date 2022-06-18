@@ -36,7 +36,7 @@ UserName=                 # github account name provided by the user
 UserToken=                # github personal access token provided by the user
 Command='clone_all_repos' # main command to execute
 Group='--by-topic'        # method used to group repositories
-GroupPrefix='group-'      # prefix used to identify the group tag
+GroupPrefix='group[-:]'   # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
 Defcol='\033[0m'          # ANSI default color
@@ -154,10 +154,10 @@ for_each_repo() {
 ##
 for_each_repo_properties() {
     local repofunction=$1
-    local index=0 topic
+    local index=0 d_group t_group 
     local name owner description visibility directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
-    local remove_dir_prefix='sub(/^"'$GroupPrefix'/,"");sub(/"$/,"")'
+    local remove_group_prefix='sub(/^"group[-:]/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
     #-- process each property -----------
@@ -185,18 +185,21 @@ for_each_repo_properties() {
             '"ssh_url"')
               shift; ssh_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
-            '"topic"')
-              shift; topic=$(awk "{$remove_dir_prefix;$capitalize}" <<<"$1")
+            '"description_tag"')
+              shift; d_group=$(awk "{$remove_group_prefix;$capitalize}" <<<"$1")
+              ;;
+            '"topic_tag"')
+              shift; t_group=$(awk "{$remove_group_prefix;$capitalize}" <<<"$1")
               ;;
             '}')
             if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
                 ((index++))
-                directory=$(print_local_directory $index "$name" "$owner" "$topic")
+                directory=$(print_local_directory $index "$name" "$owner" "${d_group:-$t_group}")
                 if [ "$visibility" = 'private' ]; then
                     clone_url=$(print_url_with_user_pass "$clone_url" "$UserToken")
                 fi
                 "$repofunction" $index "$name" "$owner" "$description" "$visibility" "$directory" "$html_url" "$clone_url" "$ssh_url"
-                name=;owner=;description=;visibility=;directory=;html_url=;clone_url=;ssh_url=;topic=
+                name=;owner=;description=;visibility=;directory=;html_url=;clone_url=;ssh_url=;d_group=;t_group=;
             fi
         esac
         shift
@@ -211,15 +214,18 @@ print_varvalue_repo_data() {
     # super quick and dirty code to parse json with awk
     # kids, don't do it at home!!!
     print_json_repo_data | awk '
-        /\{/{++s} /"topics"/{t=1}
+        /\{/{++s} /"topics"/{topics=1}
         (s==1 && (/"name"/||/"html_url"/||/"description"/||/"visibility"/||/"clone_url"/||/"ssh_url"/)) ||
         (s==2 && (/"login"/)) {
             sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
         }
-        t==1 && /"'$GroupPrefix'/ {
-            match($0,/"'$GroupPrefix'[^"]*"/); print "\"topic\"\n" substr($0,RSTART,RLENGTH)
+        s==1 && /"description"/ {
+            if (match($0,/\[group[-:][^\]]+\]/)) { print "\"description_tag\"\n\"" substr($0,RSTART+1,RLENGTH-2) "\"" }
         }
-        /\}/{--s} /]/{t=0} s==0 { print "}" } '
+        topics {
+            if (match($0,/"group[-:][^"]+"/)) { print "\"topic_tag\"\n" substr($0,RSTART,RLENGTH) }
+        }
+        /\}/{--s} /]/{topics=0} s==0 { print "}" } '
 }
 
 ## Prints data from all repositories in JSON format
@@ -274,16 +280,17 @@ print_url_with_user_pass() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s | --ssh)      Command=ssh_clone_all_repos  ;;
-        -n | --dry-run)  DryRun=echo                  ;;
-        -l | --list)     Command=enumerate_all_repos  ;;
-        -L | --xlist)    Command=detail_all_repos     ;;
-        -j | --json)     Command=print_json_repo_data ;;
-        -gt| --by-topic) Group='--by-topic'           ;;
-        -gl| --by-list)  Group='--by-list'            ;;
-        -gn| --no-group) Group='--no-group'           ;; 
-        -h | --help)     Command=show_help            ;;
-        -v | --version)  Command=print_version        ;;
+        -s | --ssh)      Command=ssh_clone_all_repos      ;;
+        -n | --dry-run)  DryRun=echo                      ;;
+        -l | --list)     Command=enumerate_all_repos      ;;
+        -L | --xlist)    Command=detail_all_repos         ;;
+        -j | --json)     Command=print_json_repo_data     ;;
+        -gt| --by-topic) Group='--by-topic'               ;;
+        -gl| --by-list)  Group='--by-list'                ;;
+        -gn| --no-group) Group='--no-group'               ;; 
+        -h | --help)     Command=show_help                ;;
+        -v | --version)  Command=print_version            ;;
+        --debug)         Command=print_varvalue_repo_data ;;
         -*) Command='fatal_error';Error="unknown option '$1'" ;;
         *)  if   [ -z "$UserName" ]; then UserName="$1"
             elif [ -z "$BaseDir"  ]; then BaseDir="$1"
