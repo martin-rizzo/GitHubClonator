@@ -9,14 +9,17 @@ Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 Downloads all gists for a specific user.
 
 Options:
-  -s, --ssh       Clone gists using ssh (SSH keys must be configured)
-  -n, --dry-run   Do not actually run any commands; just print them.
-  -l, --list      List user gists
-  -L, --xlist     List user gists, including detailed info
-  -j, --json      Print the raw JSON containing the gists details
+  -s, --ssh            Clone gists using ssh (SSH keys must be configured)
+  -n, --dry-run        Do not actually run any commands; just print them.
+  -l, --list           List user gists
+  -L, --xlist          List user gists, including detailed info
+  -j, --json           Print the raw JSON containing the gists details
 
-  -h, --help      Print this help
-  -v, --version   Print script version
+  -gt, --group-by-tag  Group gists in dirs based on their descript/topic tag
+  -gn, --no-group      Do not group gists in directories
+
+  -h, --help           Print this help
+  -v, --version        Print script version
         
 Examples:
   $ScriptName -l martin-rizzo   List all public gists owned by martin-rizzo
@@ -32,6 +35,8 @@ DryRun=                   # set this var to 'echo' to do a dry-run
 UserName=                 # github account name provided by the user
 UserToken=                # github personal access token provided by the user
 Command='clone_all_gists' # main command to execute
+Group='--group-by-tag'    # method used to group repositories
+GroupPrefix='group[-:]'   # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
 Defcol='\033[0m'          # ANSI default color
@@ -143,9 +148,11 @@ for_each_gist() {
 ##
 for_each_gist_using_properties() {
     local gistfunction=$1 properties
-    local index=0 dirfilter allowedchars
+    local index=0 group dirfilter allowedchars
     local owner description directory public html_url git_pull_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
+    local remove_group_prefix='sub(/^"group[-:]/,"");sub(/"$/,"")'
+    local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
     #-- generate directory filter -----
     allowedchars='A-Za-z0-9'
@@ -179,13 +186,16 @@ for_each_gist_using_properties() {
               shift
               git_pull_url=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
+            '"description_tag"')
+              shift; group=$(awk "{$remove_group_prefix;$capitalize}" <<<"$1")
+              ;;
             '}') # end of current gist
             if [ ! -z "$html_url" ] && [ ! -z "$git_pull_url" ]; then
                 ((index++))
-                directory=$(print_local_directory "$dirfilter" "$description" "$html_url")
+                directory=$(print_local_directory "$dirfilter" "$group" "$description" "$html_url")
                 ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
                 "$gistfunction" $index "$owner" "$description" "$directory" "$public" "$html_url" "$git_pull_url" "$ssh_url"
-                owner=;description=;directory=;public=;html_url=;git_pull_url=;ssh_url=
+                owner=;description=;directory=;public=;html_url=;git_pull_url=;ssh_url=;group=
             fi
         esac
         shift
@@ -204,6 +214,10 @@ print_varvalue_gists_data() {
         (s==1 && (/"html_url"/||/"description"/||/"public"/||/"git_pull_url"/)) ||
         (s==2 && (/"login"/)) {
             sub(/^[ \t]*/,""); sub(/[ ,\t]*$/,""); sub(/":[ \t]*/,"\"\n"); print
+        }
+        s==1 && /"description"/ {
+            if (match($0,/\[group[-:][^\]]+\]/))
+                print "\"description_tag\"\n\"" substr($0,RSTART+1,RLENGTH-2) "\""
         }
         /\}/{--s} s==0 { print "}" } '
 }
@@ -232,8 +246,11 @@ print_json_gists_data() {
 
 ## Prints the path for the local directory where the repository will be cloned
 print_local_directory() {
-    local dirfilter=$1 description=$2 html_url=$3
+    local dirfilter=$1 tag=$2 description=$3 html_url=$4
     local root group_dir gist_dir=$(sed "$dirfilter" <<<"$description")
+    case "$Group" in
+        --group-by-tag) [ "$tag" ] && group_dir="${tag%/}/" ;;
+    esac
     
     # fix gist directory if it has too few alphanumeric characters
     local alphachars=$(sed 's/^A-Za-z0-9//g' <<<"$gist_dir")
@@ -251,13 +268,16 @@ print_local_directory() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s | --ssh)     Command=ssh_clone_all_gists   ;;
-        -n | --dry-run) DryRun=echo                   ;;
-        -l | --list)    Command=enumerate_all_gists   ;;
-        -L | --xlist)   Command=detail_all_gists      ;;
-        -j | --json)    Command=print_json_gists_data ;;
-        -h | --help)    Command=show_help             ;;
-        -v | --version) Command=print_version         ;;
+        -s  | --ssh)          Command=ssh_clone_all_gists       ;;
+        -n  | --dry-run)      DryRun=echo                       ;;
+        -l  | --list)         Command=enumerate_all_gists       ;;
+        -L  | --xlist)        Command=detail_all_gists          ;;
+        -j  | --json)         Command=print_json_gists_data     ;;
+        -gt | --group-by-tag) Group="--group-by-tag"            ;;
+        -gn | --no-group)     Group="--no-group"                ;;
+        -h  | --help)         Command=show_help                 ;;
+        -v  | --version)      Command=print_version             ;;
+        --debug)              Command=print_varvalue_gists_data ;;
         -*) Command='fatal_error';Error="Unknown option '$1'" ;;
         *)  if   [ -z "$UserName" ]; then UserName="$1"
             elif [ -z "$BaseDir"  ]; then BaseDir="$1"
