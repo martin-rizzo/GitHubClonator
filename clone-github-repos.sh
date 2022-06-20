@@ -15,6 +15,7 @@ Options:
   -l, --list           List user repositories
   -L, --xlist          List user repositories, including detailed info
   -j, --json           Print the raw JSON containing the repositories details
+  -c, --no-color       Disable the use of ANSI color escapes
 
   -gt, --group-by-tag  Group repos in dirs based on their descript/topic tag
   -gl, --group-by-list Group repos in dirs based on stars list
@@ -39,6 +40,7 @@ Group='--group-by-tag'    # method used to group repositories
 GroupPrefix='group[-:]'   # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
+Yellow='\033[1;33m'       # ANSI yellow color
 Defcol='\033[0m'          # ANSI default color
 
 # COMMANDS USED IN THIS SCRIPT
@@ -285,6 +287,7 @@ while [ $# -gt 0 ]; do
         -l | --list)          Command=enumerate_all_repos      ;;
         -L | --xlist)         Command=detail_all_repos         ;;
         -j | --json)          Command=print_json_repo_data     ;;
+        -c | --no-color)      Red=;Green=;Yellow=;Defcol=      ;;
         -gt| --group-by-tag)  Group='--group-by-tag'           ;;
         -gl| --group-by-list) Group='--group-by-list'          ;;
         -gn| --no-group)      Group='--no-group'               ;; 

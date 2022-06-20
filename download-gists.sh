@@ -14,6 +14,7 @@ Options:
   -l, --list           List user gists
   -L, --xlist          List user gists, including detailed info
   -j, --json           Print the raw JSON containing the gists details
+  -c, --no-color       Disable the use of ANSI color escapes
 
   -gt, --group-by-tag  Group gists in dirs based on their description tag
   -gn, --no-group      Do not group gists in directories
@@ -39,6 +40,7 @@ Group='--group-by-tag'    # method used to group repositories
 GroupPrefix='group[-:]'   # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
+Yellow='\033[1;33m'       # ANSI yellow color
 Defcol='\033[0m'          # ANSI default color
 
 # COMMANDS USED IN THIS SCRIPT
@@ -268,16 +270,17 @@ print_local_directory() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s  | --ssh)          Command=ssh_clone_all_gists       ;;
-        -n  | --dry-run)      DryRun=echo                       ;;
-        -l  | --list)         Command=enumerate_all_gists       ;;
-        -L  | --xlist)        Command=detail_all_gists          ;;
-        -j  | --json)         Command=print_json_gists_data     ;;
-        -gt | --group-by-tag) Group="--group-by-tag"            ;;
-        -gn | --no-group)     Group="--no-group"                ;;
-        -h  | --help)         Command=show_help                 ;;
-        -v  | --version)      Command=print_version             ;;
-        --debug)              Command=print_varvalue_gists_data ;;
+        -s | --ssh)          Command=ssh_clone_all_gists       ;;
+        -n | --dry-run)      DryRun=echo                       ;;
+        -l | --list)         Command=enumerate_all_gists       ;;
+        -L | --xlist)        Command=detail_all_gists          ;;
+        -j | --json)         Command=print_json_gists_data     ;;
+        -c | --no-color)     Red=;Green=;Yellow=;Defcol=       ;;
+        -gt| --group-by-tag) Group="--group-by-tag"            ;;
+        -gn| --no-group)     Group="--no-group"                ;;
+        -h | --help)         Command=show_help                 ;;
+        -v | --version)      Command=print_version             ;;
+        --debug)             Command=print_varvalue_gists_data ;;
         -*) Command='fatal_error';Error="Unknown option '$1'" ;;
         *)  if   [ -z "$UserName" ]; then UserName="$1"
             elif [ -z "$BaseDir"  ]; then BaseDir="$1"
