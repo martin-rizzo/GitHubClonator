@@ -15,7 +15,7 @@ Options:
   -L, --xlist          List user gists, including detailed info
   -j, --json           Print the raw JSON containing the gists details
 
-  -gt, --group-by-tag  Group gists in dirs based on their descript/topic tag
+  -gt, --group-by-tag  Group gists in dirs based on their description tag
   -gn, --no-group      Do not group gists in directories
 
   -h, --help           Print this help

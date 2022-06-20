@@ -10,18 +10,18 @@ Clone all github repositories owned by a specific user.
 A personal access token can be used as USERNAME to access private repos.
 
 Options:
-  -s, --ssh        Clone repos using ssh (SSH keys must be configured)
-  -n, --dry-run    Do not actually run any commands; just print them
-  -l, --list       List user repositories
-  -L, --xlist      List user repositories, including detailed info
-  -j, --json       Print the raw JSON containing the repositories details
+  -s, --ssh            Clone repos using ssh (SSH keys must be configured)
+  -n, --dry-run        Do not actually run any commands; just print them
+  -l, --list           List user repositories
+  -L, --xlist          List user repositories, including detailed info
+  -j, --json           Print the raw JSON containing the repositories details
 
-  -gt, --by-topic  Group repos in dirs based on its topics (default)
-  -gl, --by-list   Group repos in dirs based on stars list
-  -gn, --no-group  No group repos in directories
+  -gt, --group-by-tag  Group repos in dirs based on their descript/topic tag
+  -gl, --group-by-list Group repos in dirs based on stars list
+  -gn, --no-group      Do not group repos in directories
     
-  -h, --help       Print this help
-  -v, --version    Print script version
+  -h, --help           Print this help
+  -v, --version        Print script version
 
 Examples:
   $ScriptName -l martin-rizzo     List all public repos owned by martin-rizzo
@@ -35,7 +35,7 @@ DryRun=                   # set this var to 'echo' to do a dry-run
 UserName=                 # github account name provided by the user
 UserToken=                # github personal access token provided by the user
 Command='clone_all_repos' # main command to execute
-Group='--by-topic'        # method used to group repositories
+Group='--group-by-tag'    # method used to group repositories
 GroupPrefix='group[-:]'   # prefix used to identify the group tag
 Red='\033[1;31m'          # ANSI red color
 Green='\033[1;32m'        # ANSI green color
@@ -255,8 +255,8 @@ print_local_directory() {
     local index=$1 reponame=$2 owner=$3 topic=$4
     local root group_dir
     case $Group in
-        --by-list)  group_dir="$list/" ;;
-        --by-topic) [ ! -z "$topic" ] && group_dir="${topic%/}/" ;;
+        --group-by-tag)  [ ! -z "$topic" ] && group_dir="${topic%/}/" ;;
+        --group-by-list) group_dir="$list/" ;;
     esac
     if   [ "$BaseDir" ];               then root="${BaseDir%/}/"
     elif [ "$UserToken" -a "$owner" ]; then root="./${owner%/}/"
@@ -280,17 +280,17 @@ print_url_with_user_pass() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -s | --ssh)      Command=ssh_clone_all_repos      ;;
-        -n | --dry-run)  DryRun=echo                      ;;
-        -l | --list)     Command=enumerate_all_repos      ;;
-        -L | --xlist)    Command=detail_all_repos         ;;
-        -j | --json)     Command=print_json_repo_data     ;;
-        -gt| --by-topic) Group='--by-topic'               ;;
-        -gl| --by-list)  Group='--by-list'                ;;
-        -gn| --no-group) Group='--no-group'               ;; 
-        -h | --help)     Command=show_help                ;;
-        -v | --version)  Command=print_version            ;;
-        --debug)         Command=print_varvalue_repo_data ;;
+        -s | --ssh)           Command=ssh_clone_all_repos      ;;
+        -n | --dry-run)       DryRun=echo                      ;;
+        -l | --list)          Command=enumerate_all_repos      ;;
+        -L | --xlist)         Command=detail_all_repos         ;;
+        -j | --json)          Command=print_json_repo_data     ;;
+        -gt| --group-by-tag)  Group='--group-by-tag'           ;;
+        -gl| --group-by-list) Group='--group-by-list'          ;;
+        -gn| --no-group)      Group='--no-group'               ;; 
+        -h | --help)          Command=show_help                ;;
+        -v | --version)       Command=print_version            ;;
+        --debug)              Command=print_varvalue_repo_data ;;
         -*) Command='fatal_error';Error="unknown option '$1'" ;;
         *)  if   [ -z "$UserName" ]; then UserName="$1"
             elif [ -z "$BaseDir"  ]; then BaseDir="$1"
@@ -307,7 +307,7 @@ if [ "${UserName:0:2}" = gh ] && [ ${#UserName} -ge 36 ]; then
 fi
 
 # handle unimplemented options
-[ "$Group" == '--by-list' ] && fatal_error "group by stars list isn't implemented yet"
+[ "$Group" == '--group-by-list' ] && fatal_error "group by stars lists isn't implemented yet"
 
 # execute script command
 "$Command"
