@@ -192,7 +192,7 @@ for_each_gist_using_properties() {
               shift; group=$(awk "{$remove_group_prefix;$capitalize}" <<<"$1")
               ;;
             '}') # end of current gist
-            if [ ! -z "$html_url" ] && [ ! -z "$git_pull_url" ]; then
+            if [ "$html_url" -a "$git_pull_url" ]; then
                 ((index++))
                 directory=$(print_local_directory "$dirfilter" "$group" "$description" "$html_url")
                 ssh_url=$(sed "s/^.*:\/\//git@/;s/\//:/" <<<"$git_pull_url")
@@ -232,7 +232,7 @@ print_json_gists_data() {
     elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
     else fatal_error "curl or wget must be installed in the system"
     fi
-    if [ ! -z "$UserToken" ]; then
+    if [ "$UserToken" ]; then
         "${wget[@]}" \
           --header "Accept: application/vnd.github.v3+json" \
           --header "Authorization: token $UserToken"        \

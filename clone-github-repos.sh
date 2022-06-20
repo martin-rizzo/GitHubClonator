@@ -194,7 +194,7 @@ for_each_repo_properties() {
               shift; t_group=$(awk "{$remove_group_prefix;$capitalize}" <<<"$1")
               ;;
             '}')
-            if [ ! -z "$name" -a ! -z "$clone_url" -a ! -z "$ssh_url" ]; then
+            if [ "$name" -a "$clone_url" -a "$ssh_url" ]; then
                 ((index++))
                 directory=$(print_local_directory $index "$name" "$owner" "${d_group:-$t_group}")
                 if [ "$visibility" = 'private' ]; then
@@ -238,7 +238,7 @@ print_json_repo_data() {
     elif hash curl &>/dev/null; then wget=( curl --silent --fail --location )
     else fatal_error "curl or wget must be installed in the system"
     fi
-    if [ ! -z "$UserToken" ]; then
+    if [ "$UserToken" ]; then
         "${wget[@]}" \
           --header "Accept: application/vnd.github.v3+json" \
           --header "Authorization: token $UserToken"         \
@@ -257,7 +257,7 @@ print_local_directory() {
     local index="$1" reponame="$2" owner="$3" topic="$4"
     local root group_dir
     case "$Group" in
-        --group-by-tag)  [ ! -z "$topic" ] && group_dir="${topic%/}/" ;;
+        --group-by-tag)  [ "$topic" ] && group_dir="${topic%/}/" ;;
         --group-by-list) group_dir="$list/" ;;
     esac
     if   [ "$BaseDir" ];               then root="${BaseDir%/}/"
@@ -310,7 +310,7 @@ if [ "${UserName:0:2}" = gh ] && [ ${#UserName} -ge 36 ]; then
 fi
 
 # handle unimplemented options
-[ "$Group" == '--group-by-list' ] && fatal_error "group by stars lists isn't implemented yet"
+[ "$Group" = '--group-by-list' ] && fatal_error "group by stars lists isn't implemented yet"
 
 # execute script command
 "$Command"
