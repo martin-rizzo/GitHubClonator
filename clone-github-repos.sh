@@ -30,6 +30,8 @@ Examples:
 "
 
 # CONSTANTS (can be modified by the arguments passed to the script)
+AllowSpacesInDir=false    # true = allow spaces in directory names
+AllowDotsInDir=false       # true = allow dots in directory names
 MaxDirLength=64           # maximum directory length (0 = no limit)
 BaseDir=                  # base directory where the repos will be stored
 DryRun=                   # set this var to 'echo' to do a dry-run
@@ -156,12 +158,17 @@ for_each_repo() {
 ##
 for_each_repo_properties() {
     local repofunction="$1"
-    local index=0 d_group t_group 
+    local index=0 d_group t_group allowedchars
     local name owner description visibility directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
     local remove_group_prefix='sub(/^"group[-:]/,"");sub(/"$/,"")'
     local capitalize='print toupper(substr($0,0,1))tolower(substr($0,2))'
 
+    #-- generate directory filter -----
+    allowedchars='A-Za-z0-9\-'
+    "$AllowSpacesInDir" && allowedchars="${allowedchars} "
+    "$AllowDotsInDir"   && allowedchars="${allowedchars}."
+    
     #-- process each property -----------
     shift
     while test $# -gt 0; do
@@ -196,7 +203,7 @@ for_each_repo_properties() {
             '}')
             if [ "$name" -a "$clone_url" -a "$ssh_url" ]; then
                 ((index++))
-                directory=$(print_local_directory $index "$name" "$owner" "${d_group:-$t_group}")
+                directory=$(print_local_directory "$allowedchars" "$owner" "${d_group:-$t_group}" "$name")
                 if [ "$visibility" = 'private' ]; then
                     clone_url=$(print_url_with_user_pass "$clone_url" "$UserToken")
                 fi
@@ -254,18 +261,26 @@ print_json_repo_data() {
 
 ## Prints the path for the local directory where the repository will be cloned
 print_local_directory() {
-    local index="$1" reponame="$2" owner="$3" topic="$4"
-    local root group_dir
-    case "$Group" in
-        --group-by-tag)  [ "$topic" ] && group_dir="${topic%/}/" ;;
-        --group-by-list) group_dir="$list/" ;;
-    esac
-    if   [ "$BaseDir" ];               then root="${BaseDir%/}/"
-    elif [ "$UserToken" -a "$owner" ]; then root="./${owner%/}/"
-    elif [ "$UserName" ];              then root="./${UserName%/}/"
-    else                                    root="./GitHub/"
+    local allowedchars="$1" owner="$2" tag="$3" repo_name="$4"
+    local user repo_group
+    local filter='{ sub(/\/$/,""); gsub(/[^'"$allowedchars"']/,"_") }1'
+    
+    # define user & repo_group
+    if   [ "$BaseDir" ];               then user=''
+    elif [ "$UserToken" -a "$owner" ]; then user="$owner"
+    elif [ "$UserName" ];              then user="$UserName"
+    else                                    user="GitHub"
     fi
-    echo "${root}${group_dir}${reponame}"
+    case "$Group" in
+        --group-by-tag)  [ "$tag" ] && repo_group="$tag"     ;;
+        --group-by-list)               repo_group="StarList" ;;
+    esac
+    
+    # print the full directory path
+    [ "$BaseDir"    ] && printf "%s" "${BaseDir%/}/"
+    [ "$user"       ] && printf "%s" "$(awk "$filter" <<<"$user")/"
+    [ "$repo_group" ] && printf "%s" "$(awk "$filter" <<<"$repo_group")/"
+    [ "$repo_name"  ] && awk "$filter" <<<"$repo_name"
 }
 
 ## Prints the provided URL but including user/pass into it
