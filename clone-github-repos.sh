@@ -2,7 +2,7 @@
 #  Bash script to clone all github repositories owned by a user
 #  https://github.com/martin-rizzo/GitHubClonator
 #  by Martin Rizzo
-ScriptName=${0##*/};ScriptVersion=0.1
+ScriptName="${0##*/}";ScriptVersion=0.1
 Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
@@ -93,18 +93,18 @@ ssh_clone_all_repos() {
 ## @param ssh_url       The code to clone the repo using SSH
 ##
 clone_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
-    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
+    local index="$1" name="$2" owner="$3" description="$4" visibility="$5"
+    local directory="$6" html_url="$7" clone_url="$8" ssh_url="$9"
     $DryRun mkdir -p "$directory" && $DryRun git clone "$clone_url" "$directory"
 }
 ssh_clone_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
-    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
+    local index="$1" name="$2" owner="$3" description="$4" visibility="$5"
+    local directory="$6" html_url="$7" clone_url="$8" ssh_url="$9"
     $DryRun mkdir -p "$directory" && $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
-    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
+    local index="$1" name="$2" owner="$3" description="$4" visibility="$5"
+    local directory="$6" html_url="$7" clone_url="$8" ssh_url="$9"
     local vchar
     case "$visibility" in
         private) vchar='#' ;; internal) vchar='i' ;; *) vchar='.' ;;
@@ -113,8 +113,8 @@ enumerate_repo() {
     printf "%3d %s %-18s %s\n" $index "$vchar" "$name" "$description"
 }
 detail_repo() {
-    local index=$1 name=$2 owner=$3 description=$4 visibility=$5
-    local directory=$6 html_url=$7 clone_url=$8 ssh_url=$9
+    local index="$1" name="$2" owner="$3" description="$4" visibility="$5"
+    local directory="$6" html_url="$7" clone_url="$8" ssh_url="$9"
     echo "$index:$name"
     echo "    owner     : $owner"
     echo "    directory : $directory"
@@ -132,7 +132,7 @@ detail_repo() {
 ##     The function to execute on each repo
 ##
 for_each_repo() {
-    local repofunction=$1
+    local repofunction="$1"
     local properties
     IFS=$'\n' read -r -d '' -a properties < <( print_varvalue_repo_data && printf '\0' )
     for_each_repo_properties "$repofunction" "${properties[@]}"
@@ -155,7 +155,7 @@ for_each_repo() {
 ##     each pair represent a property in the JSON returned by github.
 ##
 for_each_repo_properties() {
-    local repofunction=$1
+    local repofunction="$1"
     local index=0 d_group t_group 
     local name owner description visibility directory html_url clone_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
@@ -173,7 +173,7 @@ for_each_repo_properties() {
               shift; owner=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"description"')
-              shift; [ "$1" != 'null' ] && description=$1 || description='""'
+              shift; [ "$1" != 'null' ] && description="$1" || description='""'
               ;;
             '"visibility"')
               shift; visibility=$(awk "{$remove_quotes}1" <<<"$1")
@@ -254,9 +254,9 @@ print_json_repo_data() {
 
 ## Prints the path for the local directory where the repository will be cloned
 print_local_directory() {
-    local index=$1 reponame=$2 owner=$3 topic=$4
+    local index="$1" reponame="$2" owner="$3" topic="$4"
     local root group_dir
-    case $Group in
+    case "$Group" in
         --group-by-tag)  [ ! -z "$topic" ] && group_dir="${topic%/}/" ;;
         --group-by-list) group_dir="$list/" ;;
     esac
