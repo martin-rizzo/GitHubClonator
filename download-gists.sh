@@ -2,7 +2,7 @@
 #  Bash script to download all gists owned by a user
 #  https://github.com/martin-rizzo/GitHubClonator
 #  by Martin Rizzo
-ScriptName=${0##*/};ScriptVersion=0.1
+ScriptName="${0##*/}";ScriptVersion=0.1
 Help="
 Usage: $ScriptName [OPTIONS] USERNAME [DIR]
 
@@ -90,17 +90,17 @@ ssh_clone_all_gists() {
 ## @param ssh_url       The URL to clone the gist using SSH
 ##
 clone_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local index="$1" owner="$2" description="$3" directory="$4" public="$5"
     local html_url="$6" git_pull_url="$7" ssh_url="$8"
     $DryRun mkdir -p "$directory" && $DryRun git clone "$git_pull_url" "$directory"
 }
 ssh_clone_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local index="$1" owner="$2" description="$3" directory="$4" public="$5"
     local html_url="$6" git_pull_url="$7" ssh_url="$8"
     $DryRun mkdir -p "$directory" && $DryRun git clone "$ssh_url" "$directory"
 }
 enumerate_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local index="$1" owner="$2" description="$3" directory="$4" public="$5"
     local html_url="$6" git_pull_url="$7" ssh_url="$8"
     local vchar
     [ "$public" = 'false' ] && vchar='#' || vchar='.'
@@ -108,7 +108,7 @@ enumerate_gist() {
     printf "%3d %s %s\n" $index "$vchar" "$description"
 }
 detail_gist() {
-    local index=$1 owner="$2" description="$3" directory="$4" public="$5"
+    local index="$1" owner="$2" description="$3" directory="$4" public="$5"
     local html_url="$6" git_pull_url="$7" ssh_url="$8"
     echo "$index:$description"
     echo "    owner     : $owner"
@@ -149,7 +149,7 @@ for_each_gist() {
 ##     each pair represent a property in the JSON returned by github.
 ##
 for_each_gist_using_properties() {
-    local gistfunction=$1 properties
+    local gistfunction="$1" properties
     local index=0 group dirfilter allowedchars
     local owner description directory public html_url git_pull_url ssh_url
     local remove_quotes='sub(/^"/,"");sub(/"$/,"")'
@@ -158,10 +158,10 @@ for_each_gist_using_properties() {
 
     #-- generate directory filter -----
     allowedchars='A-Za-z0-9'
-    if $AllowSpacesInDir ; then
+    if "$AllowSpacesInDir" ; then
        allowedchars="${allowedchars} "
     fi
-    if $AllowDotsInDir ; then
+    if "$AllowDotsInDir" ; then
         allowedchars="${allowedchars}\."
     fi
     dirfilter='s/^"//;s/"$//;'"s/[^${allowedchars}]/_/g"
@@ -176,7 +176,7 @@ for_each_gist_using_properties() {
               shift; owner=$(awk "{$remove_quotes}1" <<<"$1")
               ;;
             '"description"')
-              shift; [ "$1" != 'null' ] && description=$1 || description='""'
+              shift; [ "$1" != 'null' ] && description="$1" || description='""'
               ;;
             '"public"')
               shift; public=$(awk "{$remove_quotes}1" <<<"$1")
@@ -248,7 +248,7 @@ print_json_gists_data() {
 
 ## Prints the path for the local directory where the repository will be cloned
 print_local_directory() {
-    local dirfilter=$1 tag=$2 description=$3 html_url=$4
+    local dirfilter="$1" tag="$2" description="$3" html_url="$4"
     local root group_dir gist_dir=$(sed "$dirfilter" <<<"$description")
     case "$Group" in
         --group-by-tag) [ "$tag" ] && group_dir="${tag%/}/" ;;
